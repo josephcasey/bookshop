@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "bookshop", "runtimeExecutable": "python3", "runtimeArgs": ["serve.py", "8123"], "port": 8123 }
+  ]
+}

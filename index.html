@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dog-Eared Books</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="stage">
+      <canvas id="screen" width="320" height="180" aria-label="A pixel-art bookshop seen from the street"></canvas>
+    </main>
+
+    <header id="hud">
+      <div class="clock"><span id="day"></span> <span id="time"></span> <span id="weather"></span></div>
+      <div class="controls">
+        <span class="crowd" title="How many people are out and about">
+          <button id="crowdDown" aria-label="Fewer people">−</button><span id="crowdLabel">Normal</span><button id="crowdUp" aria-label="More people">+</button>
+        </span>
+        <button id="timeBtn" title="Jump to a time of day ([ and ] step an hour)">Time of day</button>
+        <button id="pause" title="Pause (space)">❚❚</button>
+        <button data-speed="1" title="Speed 1× (1)">1×</button>
+        <button data-speed="3" title="Speed 3× (2)">3×</button>
+        <button data-speed="10" title="Speed 10× (3)">10×</button>
+        <button id="mode" title="Story time runs a day in about 25 minutes; live time follows your clock">Story time</button>
+        <button id="sound" title="Sound (m)">Sound off</button>
+        <button id="volBtn" title="Volume">Volume</button>
+        <button id="styleBtn" title="Switch between the neon future and the classic high street">Neon</button>
+        <button id="diaryBtn" title="Diary (d)">Diary</button>
+      </div>
+    </header>
+
+    <aside id="timepanel" class="panel timepanel hidden" aria-label="Time of day">
+      <button class="close" aria-label="Close">×</button>
+      <h2>Time of day</h2>
+      <div class="timeread"><span id="timeLabel">--:--</span> <span id="timeWhat"></span></div>
+      <input id="timeSlider" type="range" min="0" max="23.75" step="0.25" aria-label="Time of day" />
+      <div class="ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      <div class="presets">
+        <button data-hour="7.5">Early morning</button>
+        <button data-hour="8.3">Mabel arrives</button>
+        <button data-hour="10">Morning</button>
+        <button data-hour="12.5">Lunchtime</button>
+        <button data-hour="15">Afternoon</button>
+        <button data-hour="17.4">Closing</button>
+        <button data-hour="19.5">Evening upstairs</button>
+        <button data-hour="22.3">Bedtime</button>
+        <button data-hour="1">Night</button>
+      </div>
+      <h3>Weather</h3>
+      <div class="presets" id="weatherBtns">
+        <button data-weather="auto">Auto</button>
+        <button data-weather="clear">Clear</button>
+        <button data-weather="cloudy">Cloudy</button>
+        <button data-weather="rain">Rain</button>
+        <button data-weather="fog">Fog</button>
+        <button data-weather="snow">Snow</button>
+      </div>
+      <p class="hint">Jumping switches to Story time and carries on from there. Press Live time to follow your own clock again.</p>
+    </aside>
+
+    <aside id="volpanel" class="volpanel hidden" aria-label="Volume">
+      <button class="close" aria-label="Close">×</button>
+      <h2>Volume</h2>
+      <label><span>Music</span><input id="volMusic" type="range" min="0" max="1" step="0.01" /><output id="volMusicOut"></output></label>
+      <label><span>Effects</span><input id="volFx" type="range" min="0" max="1" step="0.01" /><output id="volFxOut"></output></label>
+      <p class="hint">Music is the shop radio; effects are everything else, from the doorbell to the traffic.</p>
+    </aside>
+
+    <aside id="tvpanel" class="tvpanel hidden" aria-label="Mabel's television">
+      <button class="close" aria-label="Close">×</button>
+      <h2>Mabel's telly</h2>
+      <canvas id="tvCanvas" width="64" height="48" aria-label="What's on Mabel's television"></canvas>
+      <p id="tvCaption"></p>
+      <ul id="showList"></ul>
+      <p class="hint" id="tvHint"></p>
+    </aside>
+
+    <aside id="tuner" class="tuner hidden" aria-label="Radio tuner">
+      <button class="close" aria-label="Close">×</button>
+      <h2>The wireless</h2>
+      <ul id="stationList"></ul>
+      <button id="radioOff" class="off">Switch off</button>
+      <p class="hint" id="tunerHint"></p>
+    </aside>
+
+    <aside id="today" class="card hidden">
+      <span class="date"></span>
+      <h2></h2>
+      <p></p>
+      <button class="close" aria-label="Dismiss">×</button>
+    </aside>
+
+    <aside id="diary" class="panel hidden">
+      <button class="close" aria-label="Close diary">×</button>
+      <h2>Shop diary</h2>
+      <div id="stats"></div>
+      <ol id="log"></ol>
+      <h3>What's new</h3>
+      <ul id="notes"></ul>
+      <p class="hint">Tip: click the shop window to knock on the glass.</p>
+    </aside>
+
+    <script src="js/core.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/pixel.js"></script>
+    <script src="js/sprites.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/actors.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/director.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/cyber.js"></script>
+    <script src="content/manifest.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
