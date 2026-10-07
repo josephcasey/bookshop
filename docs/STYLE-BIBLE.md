@@ -69,12 +69,19 @@ The golden sheets in `tools/lighting-reel/golden/` are the reference frames. `to
 - **Neon theme:** the magenta rim on the leading arc, and neon never dimmed by other light.
 - **Outside:** actors cut out of the outside light and lit flat, and the 2×2 checker only on ramps.
 - **Daytime:** the sun's shadows.
+- **The gold blade:** a side street opens in the skyline across the road. From about 12° down to 3°, a ~40 px column of low sun sweeps across the front (about 100 px an hour, as the azimuth swings), lights the fascia letters and a pane upstairs, and enters the shop as a warm slab with glazing-bar shadows. It is the day's signature beat.
+- **Sun shadow edges:** one penumbra for every edge, horizontal or vertical: the sun's 0.53° disc at the skyline's slant distance, 2–3 px, quantised to shade / half / lit. No checker.
+- **Sunlight indoors:** the surface's own colour times the light (albedo × E), never an additive wash. The spines keep their colour.
+- **Dusk:** exposure falls steadily with the sun. The west-facing front takes the afterglow (peach, rose, then blue). The glass mirrors the burning western sky above the black roofs opposite, while the room shows through below them. The alley vista, looking ENE, shows the earth's shadow rising under the Belt of Venus. Venus comes out alone first, the bright stars at −5°, the rest at −8°.
+- **Dawn:** the front is in its own shadow, cool, with a rim of sun on the cornice and the alley's end glowing.
+- **Neon by day:** the smog follows the sun: cool and backlit in the morning, white and flat at noon, a heavy amber band low on the front in the afternoon.
+- **Cloud shadows** cross at about 120 px/s with a ~300 px soft edge.
 
 ## The Lighting Lab
 
 The **Lab** button in the top bar:
 
-- **Scenarios:** morning, noon, afternoon sun, golden hour, cloudy day, dusk traffic, night turn, night rain, fog and emergency.
+- **Scenarios:** sunrise, morning, noon, afternoon sun, gold blade, golden hour, cloudy day, sunset glow, blue hour, night turn, night rain, fog and emergency.
 - **Approaches:** a toggle for every lighting approach.
 - **Compare:** split screen, with the approach on the left and off on the right. Drag across the scene to move the divider.
 - **Benchmark:** for the current scenario, how much of the picture each approach changes and what it costs per frame.

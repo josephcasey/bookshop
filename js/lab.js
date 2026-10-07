@@ -40,9 +40,11 @@
 
   // moments defined by the sun (so they follow the seasons), or by the clock: [name, hour or (()=>hour), weather, cloud, traffic]
   const SCENARIOS = [
+    ['Sunrise', () => B.sunTime(4, false), 'clear', 0.1, null],
     ['Morning', () => B.sunTime(14, false), 'clear', 0.15, null],
     ['Noon', () => B.sunPos(12).noon, 'clear', 0.25, 'car'],
     ['Afternoon sun', () => B.sunTime(22, true), 'clear', 0.15, 'car'],
+    ['Gold blade', () => B.sunTime(8, true), 'clear', 0.1, null],
     ['Golden hour', () => B.sunTime(5, true), 'clear', 0.1, 'car'],
     ['Cloudy day', () => B.sunPos(12).noon + 1.5, 'cloudy', 0.7, 'bus'],
     ['Sunset glow', () => B.sunTime(-2, true), 'clear', 0.1, 'turn'],

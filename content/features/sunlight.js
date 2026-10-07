@@ -41,7 +41,7 @@
     const strength = clamp(e / 4, 0, 1) * (1 - overcast) * (cyber() ? 0.6 : 1); // smog in the neon city
     const facing = Math.abs(phi) < 88 ? Math.cos(rad(e)) * Math.cos(rad(phi)) : 0;
     // the sun reddens as it sinks through more air (hazier and ambered in the neon city)
-    const ramp = [[3, '#ff7a3a'], [10, '#ff9e48'], [20, '#ffcf8a'], [32, '#fff1d6'], [60, '#fff6ea']];
+    const ramp = [[0.5, '#ff8c40'], [3, '#ffa860'], [6, '#ffbf80'], [12, '#ffd6a8'], [20, '#ffe8cc'], [30, '#fff4e6'], [60, '#fff6ea']]; // ~2300 K to 5500 K
     let col = ramp[0][1];
     for (let i = 0; i < ramp.length - 1; i++) if (e >= ramp[i][0]) col = B.mix(ramp[i][1], ramp[i + 1][1], clamp((e - ramp[i][0]) / (ramp[i + 1][0] - ramp[i][0]), 0, 1));
     if (cyber()) col = B.mix(col, '#ffb070', 0.5);
@@ -181,7 +181,7 @@
       const aX = front + f * k * 7;
       const cX = rear - f * k * 3;
       g.fillRect(Math.round(aX) - 1, y, 2, 1);
-      g.fillRect(Math.round(cX) - 1, y, 3, 1);
+      g.fillRect(Math.round(cX) - (f > 0 ? 3 : 1), y, 4, 1); // a broad C-pillar
       g.fillRect(Math.round((front + rear) / 2) - 1, y, 2, 1); // the B-pillar
     }
   }
@@ -283,23 +283,43 @@
     // the buildings across the road: their shadow climbs the front as the sun goes down. The sun's disc softens
     // every edge, horizontal or vertical, alike: a 2 px half-shade band, no checker
     if (F.buildingShadow) {
+      // the sun's 0.53 deg disc at the skyline's slant distance: ~2 px square-on, 3 px at a raking angle
+      const pr = clamp(Math.round((0.0093 * (22 / sun.cosP) * PX_PER_M) / 2), 2, 3);
       const L = new Float32Array(W + 4);
       for (let x = -2; x < W + 2; x++) L[x + 2] = buildingLine(sun, x);
       mg.fillStyle = '#000';
       for (let x = 0; x < W; x++) {
         let lo = Infinity;
         let hi = -Infinity;
-        for (let o = 0; o < 5; o++) {
-          lo = Math.min(lo, L[x + o]);
-          hi = Math.max(hi, L[x + o]);
+        for (let o = 2 - pr; o <= 2 + pr; o++) {
+          lo = Math.min(lo, L[clamp(x + o, 0, W + 3)]);
+          hi = Math.max(hi, L[clamp(x + o, 0, W + 3)]);
         }
         if (lo >= H + 2) continue;
         const y1 = Math.max(8, Math.round(hi) + 2);
-        if (y1 < H) mg.fillRect(x, y1, 1, H - y1);
-        for (let y = Math.max(8, Math.round(lo) - 2); y < Math.min(H, y1); y++) {
+        if (y1 < 164) mg.fillRect(x, y1, 1, 164 - y1);
+        for (let y = Math.max(8, Math.round(lo) - 2); y < Math.min(164, y1); y++) {
           let f = 0;
-          for (let o = 0; o < 5; o++) f += clamp((y - L[x + o]) / 3 + 0.5, 0, 1);
-          f /= 5;
+          for (let o = 2 - pr; o <= 2 + pr; o++) f += clamp((y - L[clamp(x + o, 0, W + 3)]) / (pr + 1) + 0.5, 0, 1);
+          f /= 2 * pr + 1;
+          if (f > 0.75) mg.fillRect(x, y, 1, 1);
+          else if (f > 0.25) {
+            mg.fillStyle = 'rgba(0,0,0,0.5)';
+            mg.fillRect(x, y, 1, 1);
+            mg.fillStyle = '#000';
+          }
+        }
+      }
+    }
+    // the paving: a row (y - 164) further out sees the skyline from ~0.2 m per row nearer it, shifted by its depth
+    if (F.buildingShadow) {
+      const pr = 2;
+      for (let y = 164; y < H; y++) {
+        const shift = -sun.tanP * (y - 164) * 4.6;
+        for (let x = 0; x < W; x++) {
+          let f = 0;
+          for (let o = -pr; o <= pr; o++) f += clamp((164 + (y - 164) * 0.6 - buildingLine(sun, x + shift + o)) / (pr + 1) + 0.5, 0, 1);
+          f /= 2 * pr + 1;
           if (f > 0.75) mg.fillRect(x, y, 1, 1);
           else if (f > 0.25) {
             mg.fillStyle = 'rgba(0,0,0,0.5)';
@@ -387,7 +407,7 @@
           if (s.shop.lights) tg.fillRect(Wn0.x, Wn0.y, Wn0.w, Wn0.h);
           tg.globalCompositeOperation = 'source-over';
           g.globalCompositeOperation = 'multiply';
-          g.globalAlpha = Math.min(0.85, (0.52 + 0.3 * clamp(-P.e / 4, 0, 1)) * dark);
+          g.globalAlpha = Math.min(0.85, (0.52 + 0.3 * clamp(-P.e / 4, 0, 1)) * dark * (P.morning && P.e < 6 ? 1.55 : 1));
           g.drawImage(tc, 0, 0);
         }
       }
@@ -422,18 +442,6 @@
         g.globalAlpha = 1;
         g.fillStyle = rgba('#ffd8a8', 0.15 * sunOnGround);
         for (const [x0, x1, y] of overhangs()) g.fillRect(x0, y, x1 - x0, 1);
-      }
-      // morning, sun behind the building: a 1 px rim of sunlight catches the top of the cornice
-      if (P.morning && sun.behind && P.e > 0 && P.e < 40) {
-        const k = clamp(P.e / 3, 0, 1) * clamp((40 - P.e) / 15, 0, 1) * cloudAt(s, 140);
-        g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = 0.45 * k;
-        g.fillStyle = '#ffd8a0';
-        g.fillRect(0, 8, 280, 1);
-        g.globalAlpha = 0.2 * k;
-        g.fillRect(0, 9, 280, 1);
-        g.globalAlpha = 1;
-        g.globalCompositeOperation = 'source-over';
       }
       // twilight: the front faces west, into the afterglow: peach, then rose, then the blue of blue hour
       if (!P.morning && P.e < 2 && P.e > -9) {
@@ -485,16 +493,20 @@
     const facadeLit = P.morning && P.e > 0; // the opposite fronts face east-north-east
     const wall = cyber() ? (facadeLit ? '#7a7084' : '#4a4458') : facadeLit ? '#d8c4a8' : '#8a8090';
     for (let x = 0; x < W; x++) {
-      // nearer the top of the glass, the higher the roofs; seen from across the road at dusk the skyline crosses mid-pane
-      const roof = skyAt(W - x) < 1 ? top + rows : dusk ? top + rows * 0.5 - (skyAt(W - x) - 9.7) * 4 : top + rows - (skyAt(W - x) - 8) * 6;
+      const sk = skyAt(W - x);
       for (let y = top; y < top + rows; y++) {
+        // the height at which the reflected sight line meets the buildings across the road
+        const hm = (164 - y) / PX_PER_M;
+        const Hh = hm + (hm - 1.6) * 1.57;
+        const sky = Hh > sk || sk < 1;
         let c;
-        if (y < roof) c = B.mix(skyTop, skyBot, clamp((y - top) / Math.max(1, roof - top), 0, 1));
-        else if (dusk) c = ((x >> 2) * 7 + (y >> 2) * 13) % 29 === 0 && (x & 3) < 2 && (y & 3) < 2 && y > roof + 3 ? '#a87840' : '#16141e'; // the roofs a black silhouette, a lit window or two
-        else c = ((x >> 2) + (y >> 2)) % 5 === 0 && y > roof + 3 ? B.mix(wall, '#2a2a38', 0.5) : wall; // windows across the road
+        if (sky) c = B.mix(skyTop, skyBot, clamp((sk + 9 - Hh) / 8, 0, 1)); // brightest low down, just above their roofs
+        else if (Hh < 0.3) c = cyber() ? '#24222c' : '#55524e'; // the road
+        else if (dusk) c = ((x >> 2) * 7 + (y >> 2) * 13) % 29 === 0 && (x & 3) < 2 && (y & 3) < 2 ? '#a87840' : '#16141e'; // dark frontages, a lit window or two
+        else c = (x % 14 < 9 && Hh > 0.8 && Hh < 2.6) || (x % 9 < 3 && Hh > 3.6 && Hh < 5) ? B.mix(wall, '#2a2a38', 0.5) : wall; // the shopfronts opposite: windows, and first-floor sashes
         g.fillStyle = c;
         g.fillRect(x, y, 1, 1);
-        if (skyMask && y < roof) skyMask.fillRect(x, y, 1, 1);
+        if (skyMask && sky) skyMask.fillRect(x, y, 1, 1);
       }
     }
   }
@@ -513,6 +525,25 @@
       const Wn = B.LAYOUT.win;
       const dayAmt = clamp((P.e + 1) / 8, 0, 1);
       const reflAmt = clamp((P.e + 7) / 9, 0, 1); // reflections hold through twilight: the bright sky outshines a dark shop
+      // morning, sun behind the building: the shop's side wall in the alley faces SSE (52 deg off the sun) and catches
+      // it above the shadow of the house across the 1.5 m alley
+      if (P.morning && sun.behind && P.e > 2 && S > 0.02) {
+        const k = clamp((P.e - 2) / 4, 0, 1) * cloudAt(s, 290) * S;
+        const K = B.renderKit;
+        if (K && K.AL && K.wallL) {
+          const litPx = Math.min(7, (1.5 * Math.tan(rad(P.e))) / 0.616) * PX_PER_M;
+          const y1 = Math.min(K.AL.bot, Math.round(K.AL.top + litPx));
+          g.globalCompositeOperation = 'soft-light';
+          g.globalAlpha = 0.6 * k;
+          g.fillStyle = sun.col;
+          for (let y = K.AL.top; y < y1; y++) {
+            const xr = Math.round(K.wallL(y));
+            if (xr > K.AL.l) g.fillRect(K.AL.l, y, xr - K.AL.l, 1);
+          }
+          g.globalAlpha = 1;
+          g.globalCompositeOperation = 'source-over';
+        }
+      }
       // the glass by day: reflection outshines the interior (single glazing reflects ~8% of a bright street)
       if (F.glassReflection && reflAmt > 0.02) {
         const key = `${Math.round(s.hour * 30)}|${B.theme}|${P.morning}`;
@@ -628,26 +659,39 @@
           if (skyAt(xs) - ((22 - dCar) / sun.cosP) * sun.tanE > 1.2) continue; // the car's in the opposite buildings' shadow
           const wob = Math.sin(ev.t * 9 + ev.seed * 6);
           if (wob < 0.2) continue; // the glass only catches the sun at the right angle, in flickers
-          const up = ev.dir > 0; // windscreens raked towards the sun throw it up, the others down
-          const y = up ? 72 + Math.round(ev.seed * 18) : 150 + Math.round(ev.seed * 4);
-          const fx = Math.round(x);
-          // only visible against shade: clip to the shadow mask
-          tg.globalCompositeOperation = 'source-over';
-          tg.clearRect(0, 0, W, H);
-          tg.fillStyle = sun.col;
-          tg.fillRect(fx, y, ev.kind === 'bus' ? 10 : 6, 3);
-          tg.globalCompositeOperation = 'destination-in';
-          tg.drawImage(mc, 0, 0);
-          tg.globalCompositeOperation = 'source-over';
+          // reflect the sun off a windscreen raked 30 deg back (its normal leans the way the car is going)
+          const ce = Math.cos(rad(sun.e));
+          const d = [-Math.sin(rad(sun.phi)) * ce, Math.cos(rad(sun.phi)) * ce, -Math.sin(rad(sun.e))];
+          const n = [0.5 * ev.dir, 0, 0.866];
+          const dn = d[0] * n[0] + d[2] * n[2];
+          const r = [d[0] - 2 * dn * n[0], d[1], d[2] - 2 * dn * n[2]];
+          if (r[1] <= 0.05) continue;
+          const xCar = ev.dir > 0 ? -70 + k * 460 : 390 - k * 460;
+          const z = 1.2 + (r[2] / r[1]) * dCar; // metres up our wall
+          if (z < 0.05) continue; // it lands on the pavement
+          let fx = xCar + (r[0] / r[1]) * dCar * PX_PER_M;
+          let fy = 164 - z * PX_PER_M;
+          const amp = S * gold * wob * cloudAt(s, fx);
+          const inWin = fx > Wn.x && fx < Wn.x + Wn.w && fy > Wn.y && fy < Wn.y + Wn.h;
           g.globalCompositeOperation = 'lighter';
-          g.globalAlpha = 0.4 * S * gold * wob * cloudAt(s, fx);
-          g.drawImage(tc, 0, 0);
-          if (up) {
-            // through the glass: a small patch sliding the other way across the ceiling and the top shelves
-            const ix = Wn.x + Wn.w - ((fx - Wn.x) % Wn.w + Wn.w) % Wn.w;
+          if (inWin) {
+            // through the glass, on into the shop: a glint sliding across the shelves (~4x the room light)
+            fx += (r[0] / r[1]) * 40;
+            fy -= (r[2] / r[1]) * 40;
             g.fillStyle = sun.col;
-            g.globalAlpha = 0.35 * S * gold * wob * cloudAt(s, fx);
-            g.fillRect(Math.round(clamp(ix, Wn.x + 2, Wn.x + Wn.w - 7)), Wn.y + 2, 5, 2);
+            g.globalAlpha = 0.45 * amp;
+            g.fillRect(Math.round(clamp(fx, Wn.x + 1, Wn.x + Wn.w - 6)), Math.round(clamp(fy, Wn.y + 1, Wn.y + Wn.h - 3)), 5, 2);
+          } else {
+            // on the front, a 5% glint only reads against shade: clip to the shadow mask
+            tg.globalCompositeOperation = 'source-over';
+            tg.clearRect(0, 0, W, H);
+            tg.fillStyle = sun.col;
+            tg.fillRect(Math.round(fx), Math.round(fy), ev.kind === 'bus' ? 10 : 6, 3);
+            tg.globalCompositeOperation = 'destination-in';
+            tg.drawImage(mc, 0, 0);
+            tg.globalCompositeOperation = 'source-over';
+            g.globalAlpha = 0.4 * amp;
+            g.drawImage(tc, 0, 0);
           }
           g.globalAlpha = 1;
           g.globalCompositeOperation = 'source-over';
@@ -676,6 +720,7 @@
         D,
         col: sun.col,
         a: Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110)),
+        colGain: B.mix(sun.col, '#ffe8cc', 0.55),
         gain: Math.min(1.2, 1.8 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain)
         motes: true,
       };

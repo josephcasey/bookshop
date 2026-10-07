@@ -928,7 +928,11 @@
         }
         rg.drawImage(mainCanvas, 0, 0);
         rg.globalCompositeOperation = 'multiply';
-        rg.drawImage(pc, 0, 0);
+        if (src.colGain) {
+          // a paler light: the patch lifts value more than it tints
+          rg.fillStyle = src.colGain;
+          rg.fillRect(0, 0, W, H);
+        } else rg.drawImage(pc, 0, 0);
         rg.globalCompositeOperation = 'destination-in';
         rg.drawImage(pc, 0, 0);
         rg.restore();

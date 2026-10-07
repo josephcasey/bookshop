@@ -1070,12 +1070,12 @@
       const noon = Math.min(1, Math.max(0, (SP.e - 20) / 25));
       const aft = !SP.morning ? Math.min(1, Math.max(0, (35 - SP.e) / 20)) * Math.min(1, Math.max(0, (SP.e + 2) / 4)) : 0;
       for (let y = 0; y < B.H; y++) {
-        const low = Math.min(1, Math.max(0, (y - 70) / 100));
+        const low = Math.min(1, Math.max(0, (y - 120) / 50));
         let cr = 168, cg = 160, cb = 170, k = 0.16;
         if (SP.morning) [cr, cg, cb, k] = [150 + 30 * (1 - y / B.H), 162, 190, 0.18];
         cr += (205 - cr) * noon; cg += (202 - cg) * noon; cb += (200 - cb) * noon; k += 0.08 * noon;
         const am = aft * low;
-        cr += (255 - cr) * am; cg += (170 - cg) * am; cb += (90 - cb) * am; k += 0.16 * am;
+        cr += (232 - cr) * am; cg += (150 - cg) * am; cb += (84 - cb) * am; k += 0.1 * am; // a warm glow, not grime
         hz[y * 4] = cr; hz[y * 4 + 1] = cg; hz[y * 4 + 2] = cb; hz[y * 4 + 3] = k * day;
       }
     }
