@@ -114,7 +114,9 @@
       g.fillStyle = c;
       g.fillRect(Math.round(gx(x)), Math.round(gy(h)), w, hh);
     };
-    const tint = night ? null : P.morning && P.e > 0 ? 'rgba(255,200,140,0.22)' : 'rgba(60,70,110,0.14)';
+    // its own light: sunlit in the morning (it faces ENE); in shade after, darker the lower the sun (x0.35 at golden hour)
+    const eveShade = !P.morning ? clamp(0.15 + (25 - P.e) / 40, 0.15, 0.65) : 0;
+    const tint = night ? null : P.morning && P.e > 0 ? 'rgba(255,200,140,0.22)' : `rgba(20,22,40,${eveShade.toFixed(2)})`;
     for (const b of L) {
       const x0 = b.x;
       const x1 = b.x + b.w;
@@ -139,7 +141,10 @@
           const wx = x0 + i * pitch + pitch / 2 - 0.45 * PX;
           const litUp = night && b.flats[(f * nW + i) % 12] < 0.45 && s.hour > 17 && s.hour < 23.5;
           if (night && !litUp) continue;
-          R(wx, wx + 0.9 * PX, h0, h0 + 1.4, litUp ? (cy ? '#b0a0ff' : '#f0c070') : cy ? '#141826' : '#3a4250');
+          const v = b.flats[(f * nW + i + 5) % 12];
+          const warm = cy ? '#b0a0ff' : v < 0.15 ? '#8aa8ff' : v < 0.5 ? '#f0c070' : v < 0.8 ? '#ffd8a0' : '#e0a060'; // a telly's blue, lamps
+          R(wx, wx + 0.9 * PX, h0, h0 + 1.4, litUp ? warm : cy ? '#141826' : '#3a4250');
+          if (litUp && v > 0.6) R(wx, wx + 0.45 * PX, h0, h0 + 1.4, B.mix(warm, '#000', 0.45)); // half-drawn curtains
         }
       }
       // the shopfront: a 1 px gap of brick either side keeps neighbours apart
@@ -163,6 +168,29 @@
         if (!night || open || cy) for (let x = fa + 2; x < fb - 2; x += 3) if ((x * 7 + b.x) % 5) g.fillRect(x, fy + (cy ? 0 : 1), 1, 1); // the lettering
       }
       if (cy) continue;
+      // inside the lit shops, at night: the chippy's counter, fryers and menu; the pub's mullions and a drinker
+      if (lit && night) {
+        const a = Math.round(gx(wx0));
+        const bb = Math.round(gx(wx1));
+        if (b.kind === 'chippy') {
+          g.fillStyle = '#2a3440';
+          g.fillRect(a, Math.round(gy(1.0)), bb - a, 1); // the counter
+          g.fillRect(a + 1, Math.round(gy(0.75)), bb - a - 2, 2); // the fryer range
+          g.fillStyle = '#4a6a8a';
+          g.fillRect(a + 1, Math.round(gy(2.3)), bb - a - 2, 1); // the menu board
+        }
+        if (b.kind === 'pub') {
+          g.fillStyle = '#3a2010';
+          for (let x = a + 4; x < bb - 1; x += 5) g.fillRect(x, Math.round(gy(2.4)), 1, Math.round(gy(0.5)) - Math.round(gy(2.4))); // mullions
+          const dx = a + Math.round((bb - a) * 0.4);
+          g.fillRect(dx, Math.round(gy(1.75)), 2, 2); // a drinker at the window
+          g.fillRect(dx - 1, Math.round(gy(1.45)), 4, Math.round(gy(0.5)) - Math.round(gy(1.45)));
+        }
+        if (b.kind === 'news') {
+          g.fillStyle = '#ffe070';
+          g.fillRect(Math.round(gx(doorL ? s0 + 0.3 * PX : s1 - 0.9 * PX)), Math.round(gy(1.9)), 3, 4); // a lit doorway
+        }
+      }
       // one signature each
       const mid = Math.round(gx((s0 + s1) / 2));
       const groundY = Math.round(gy(0));
@@ -186,14 +214,18 @@
           g.fillRect(Math.round(gx(doorL ? s0 + 1.1 * PX : s1 - 1.1 * PX)), Math.round(gy(1.9)) + i, 1, 1);
         }
       } else if (b.kind === 'launderette') {
-        g.fillStyle = night ? (open ? '#f4fbff' : BLACK) : '#e8f0f0'; // lit portholes
-        for (let x = Math.round(gx(wx0)) + 1; x < Math.round(gx(wx1)) - 1; x += 3) g.fillRect(x, Math.round(gy(1.0)), 2, 2);
+        for (let x = Math.round(gx(wx0)) + 1; x < Math.round(gx(wx1)) - 3; x += 4) {
+          g.fillStyle = '#20262c';
+          g.fillRect(x - 1, Math.round(gy(1.0)) - 1, 4, 4); // the machine's rim
+          g.fillStyle = night ? (open ? '#f4fbff' : BLACK) : '#c8d8e0'; // a lit porthole
+          g.fillRect(x, Math.round(gy(1.0)), 2, 2);
+        }
       } else if (b.kind === 'news' && open && !night) {
         g.fillStyle = '#f0f0e8';
         g.fillRect(Math.round(gx(doorL ? s0 - 0.6 * PX : s1 + 0.2 * PX)), groundY - 3, 2, 3);
       } else if (b.kind === 'bookie') {
         g.fillStyle = night && open ? '#ff3030' : dim('#c02020'); // a red neon strip after dark
-        g.fillRect(fa, fy + 2, fb - fa, 1);
+        g.fillRect(fa, fy + 2, fb - fa, 2);
       }
       if (b.kind === 'grocer' && open && !night) {
         const c = ['#e04a2a', '#f0c030', '#5ab03a', '#e88a2a'];
@@ -348,11 +380,19 @@
         }
       } else if (bus) {
         // after dark a bus is its lit lower deck and upper windows
-        g.fillStyle = cyber() ? '#c8b0ff' : '#f0d890';
-        for (let x = x0 + 3; x < x0 + wpx - 4; x += 6) {
+        g.globalAlpha = 0.6; // lit, but dimmer than the pub
+        let n = 0;
+        for (let x = x0 + 3; x < x0 + wpx - 5; x += 7) {
+          g.fillStyle = cyber() ? '#c8b0ff' : '#e8b070';
           g.fillRect(x, Y(2.75), 5, Y(1.75) - Y(2.75));
           g.fillRect(x, Y(1.5), 5, Y(0.9) - Y(1.5));
+          if ((n++ + Math.floor(ev.seed * 7)) % 3 === 0) {
+            g.fillStyle = '#2a1a14'; // a passenger's head and shoulders
+            g.fillRect(x + 1, Y(2.3), 2, 2);
+            g.fillRect(x, Y(2.05), 4, Y(1.75) - Y(2.05));
+          }
         }
+        g.globalAlpha = 1;
         g.fillStyle = '#f0b030';
         g.fillRect(ev.dir > 0 ? x0 + wpx - 12 : x0 + 3, Y(2.95), 9, 1);
       }

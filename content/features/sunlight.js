@@ -640,8 +640,8 @@
           const dayK = streetK ? (!P.morning && P.e < 8 ? 0.35 : 0.45) : 0.3;
           const base = Math.max(dayK * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.85 * nightRefl); // (the flat's lamp only dims its own panes)
           // where the glass mirrors sky (~8% of 500-5000 cd/m2) it outshines the room behind: dim the room, screen the sky
-          const skyMul = Math.max(0.6 * dayAmt, duskK);
-          const skyA = Math.max(base, 0.45 * dayAmt, 0.65 * duskK) * lamp;
+          const skyMul = Math.max(0.75 * dayAmt, duskK); // the sky's image (~400 cd/m2) all but hides the room behind
+          const skyA = Math.max(base, 0.55 * dayAmt, 0.65 * duskK) * lamp;
           if (reflCache.m) {
             if (skyMul > 0.02) {
               tg.globalCompositeOperation = 'source-over';
