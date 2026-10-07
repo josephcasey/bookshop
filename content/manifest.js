@@ -29,6 +29,7 @@ window.Bookshop.manifest = [
   'features/weather.js',
   'features/offscreen-lights.js',
   'features/sunlight.js',
+  'features/opposite-street.js',
   'features/radio-tuner.js',
   'features/live-radio.js',
   'features/tv.js',

@@ -19,6 +19,7 @@
     ['buildingShadow', 'Opposite buildings', 'The skyline across the road shading the front as the sun sinks'],
     ['cloudShadows', 'Cloud shadows', 'Patches of shade drifting across the street'],
     ['glassReflection', 'Glass reflects the street', 'By day the window mirrors the bright street behind you, until dusk'],
+    ['streetLife', 'Reflected street', 'The shops, people and traffic across the road, seen in the glass'],
     ['sunInterior', 'Sun through the glass', 'The window’s sunlit patch on the back wall, props and all'],
     ['headlights', 'Traffic light', 'Cars, buses, bikes and emergency vehicles as light sources'],
     ['steadyLights', 'Steady lights', 'The pub, chippy, signs and the street lamp'],

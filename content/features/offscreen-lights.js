@@ -1274,7 +1274,7 @@
           project(qg, s, Object.assign({}, src, { a: src.a * (s.upstairs.light ? 0.4 : 1) * (src.y > 150 ? 0.6 : 1) * surf * exposure }), FLAT, ag);
         }
         // the unlit shop window is a dark mirror: a sharp, faint image of the lit windows across the road
-        if (!s.shop.lights && F.mirror) {
+        if (!s.shop.lights && F.mirror && !(B.oppositeStreet && F.streetLife)) { // (superseded by the reflected street)
           const rf = 0.12 * dark * exposure;
           const mirror = (x0, x1, col) => {
             // 4 x 2 panes, drawn separately so the bars between them are simply gaps (the glare canvas is shared)

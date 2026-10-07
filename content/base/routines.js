@@ -113,13 +113,33 @@
       o.climb = 0;
       o.x = B.LAYOUT.upstairsSpots.door;
       yield 2;
-      s.upstairs.light = true;
-      B.audio.play('click');
+      // she doesn't need the lamp while there's still light in the sky: it goes on as the afterglow fades
+      if (!B.sunPos || B.sunPos(s.hour).e < -4) {
+        s.upstairs.light = true;
+        B.audio.play('click');
+      } else s.upstairs.lampWaiting = true;
       yield o.go(B.LAYOUT.upstairsSpots.windowA);
       o.face(-1);
       o.emote(o.mood > 0.5 ? 'happy' : 'sigh', 1.6);
       yield 1;
     },
+  });
+
+  // At dusk the panes upstairs mirror the sunset; when the glow goes out of the sky, Mabel's lamp comes on
+  B.on('tick', (s) => {
+    const U = s.upstairs;
+    if (!U.lampWaiting) return;
+    const o = s.owner;
+    if (o.area !== 'upstairs' || U.light || o.pose === 'sleep' || s.hour >= B.config.bedHour) {
+      U.lampWaiting = false;
+      return;
+    }
+    if (B.sunPos(s.hour).e < -4) {
+      U.lampWaiting = false;
+      U.light = true;
+      B.audio.play('click');
+      if (B.chance(0.5)) B.log(`The light goes out of the sky, and on in the flat upstairs.`);
+    }
   });
 
   // Evening in the flat ends with the blinds coming down.

@@ -294,6 +294,36 @@ async function shoot(tag, emit, report) {
     }
     await emit('J-seasons-checks', sh.c);
   }
+  // K: the street behind you, in the glass: shops opposite, walkers, traffic; by day, at dusk and at night
+  if (B.oppositeStreet) {
+    const sh = sheet(3, 2, 320, 180, 2);
+    const W0 = B.oppositeStreet.walkers;
+    const put = (xs) => {
+      W0.length = 0;
+      xs.forEach((x, i) => W0.push({ x, dir: i % 2 ? -1 : 1, v: 0, top: ['#6a2a2a', '#3a4a6a', '#c8a040', '#4a6a4a'][i % 4], bottom: '#2a2a34', skin: '#e8c4a0', hair: '#2a1a10', tall: 1, dog: i === 2, brolly: '#a02030', ph: i }));
+    };
+    const shots = [
+      [() => B.sunPos(12).noon - 1, 'morning-ish: shops opposite, a bus passing', [{ kind: 'bus', dur: 4.2, t: 2.1, dir: 1 }], [20, 90, 170, 260]],
+      [() => B.sunPos(12).noon + 2, 'afternoon: a car passing, walkers', [{ kind: 'car', dur: 2.8, t: 1.4, dir: -1 }], [0, 60, 140, 230]],
+      [() => B.sunTime(2, true), 'golden hour: walkers opposite', [], [40, 120, 200, 300]],
+      [() => B.sunTime(-3, true), 'dusk: shops lighting up, car', [{ kind: 'car', dur: 2.8, t: 1.0, dir: 1 }], [70, 150, 230]],
+      [() => 21.5, 'night, shop dark: the pub and chippy in the glass, car', [{ kind: 'car', dur: 2.8, t: 1.5, dir: -1 }], [60, 210]],
+      [() => 22.3, 'night rain: brollies and a bus', [{ kind: 'bus', dur: 4.2, t: 2.0, dir: -1 }], [30, 120, 220]],
+    ];
+    let i = 0;
+    for (const [hr, label, traffic, xs] of shots) {
+      await scene('classic', hr(), { mabelInside: false });
+      if (i === 5) B.setWeatherKind(s, 'rain');
+      s.weather.cloud = 0.15;
+      if (i >= 4) s.shop.lights = false;
+      setTraffic(traffic);
+      put(xs);
+      sh.put(i++, frame(), 0, 0, `classic ${label}`);
+    }
+    B.setWeatherKind(s, null);
+    W0.length = 0;
+    await emit('K-reflected-street', sh.c);
+  }
   // I: what single approaches bring (split screens: left ON, right OFF)
   if (B.lightFlags) {
     const sh = sheet(2, 2, 320, 180, 2);

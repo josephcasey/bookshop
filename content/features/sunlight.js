@@ -67,9 +67,11 @@
   const SKY = (() => {
     const rng = B.seeded('skyline-opposite');
     const out = [];
+    const blocks = (B.oppositeBlocks = []); // the buildings, for whoever paints them (content/features/opposite-street.js)
     for (let x = -200; x < 520; ) {
       const wdt = 30 + Math.floor(rng() * 50);
       const h = 8.6 + rng() * 2.2;
+      blocks.push({ x, w: wdt, h });
       for (let i = 0; i < wdt; i++) out.push(h);
       if (rng() < 0.7) {
         const cx = out.length - wdt + 6 + Math.floor(rng() * (wdt - 12));
@@ -80,6 +82,17 @@
     }
     // a side street opens off the road behind you: a gap in the skyline where low sun gets through
     for (let i = 0; i < 40; i++) out[310 + i] = 0;
+    // the gap cuts the buildings either side of it
+    const cut = [];
+    for (const b of blocks) {
+      if (b.x + b.w <= 110 || b.x >= 150) cut.push(b);
+      else {
+        if (b.x < 110) cut.push({ x: b.x, w: 110 - b.x, h: b.h });
+        if (b.x + b.w > 150) cut.push({ x: 150, w: b.x + b.w - 150, h: b.h });
+      }
+    }
+    cut.push({ x: 110, w: 40, h: 0, gap: true });
+    B.oppositeBlocks = cut.filter((b) => b.w >= 4).sort((a, b) => a.x - b.x);
     return out;
   })();
   const skyAt = (x) => SKY[clamp(Math.round(x + 200), 0, SKY.length - 1)];
@@ -476,6 +489,22 @@
   let lay = null;
   /** The street behind you, as seen mirrored in glass: sky above the opposite roofline (chimneys and all), the
    *  opposite facades below with their windows; sunlit in the morning, in shade in the evening. */
+  /** The terrace across the road as the glass sees it, by mirrored street x and height (m): shopfronts with a fascia
+   *  band, piers and doors, brick above with first-floor sashes. At dusk the fronts go dark and some shops stay lit. */
+  function frontage(xo, Hh, wall, dusk) {
+    if (Hh < 0.3) return cyber() ? '#24222c' : '#55524e'; // the road
+    const bay = ((xo % 40) + 40) % 40;
+    const shop = Math.floor(xo / 40);
+    const lit = dusk && (((shop % 5) + 5) % 5 === 1 || ((shop % 7) + 7) % 7 === 4); // the pub, the chippy
+    if (Hh < 0.6) return dusk ? '#16141e' : B.mix(wall, '#2a2a38', 0.35); // stall-risers
+    if (Hh < 2.6) {
+      if (bay < 28) return lit ? (bay % 9 === 0 ? '#5a3a20' : '#e0a050') : dusk ? '#1a1822' : B.mix(wall, '#2a2a38', 0.45); // windows
+      return dusk ? '#16141e' : bay > 31 && bay < 38 ? B.mix(wall, '#2a2a38', 0.3) : wall; // pier and door
+    }
+    if (Hh < 3.3) return dusk ? (lit ? '#4a3420' : '#16141e') : B.mix(wall, '#3a2a2a', 0.4); // fascia
+    if (Hh > 4.2 && Hh < 5.6 && ((xo % 20) + 20) % 20 < 8) return dusk ? (lit && xo % 3 ? '#a87840' : '#16141e') : B.mix(wall, '#2a2a38', 0.4); // sashes
+    return dusk ? '#16141e' : wall;
+  }
   function paintReflection(g, s, sun, top, rows, skyMask) {
     const P = B.sunPos(s.hour);
     let [skyTop, skyBot] = B.skyByElevation ? B.skyByElevation(s.hour, cyber()) : ['#7fb2e0', '#b5d6ee'];
@@ -491,19 +520,20 @@
     }
     const dusk = !P.morning && P.e < 3;
     const facadeLit = P.morning && P.e > 0; // the opposite fronts face east-north-east
-    const wall = cyber() ? (facadeLit ? '#7a7084' : '#4a4458') : facadeLit ? '#d8c4a8' : '#8a8090';
+    const wall = cyber() ? (facadeLit ? '#8a7484' : '#4a4458') : facadeLit ? '#d09068' : '#8a8090';
     for (let x = 0; x < W; x++) {
-      const sk = skyAt(W - x);
+      const xm = 160 + (x - 160) * 2.57; // a mirror facing us magnifies sideways by the same parallax, no flip
+      const sk = skyAt(xm);
       for (let y = top; y < top + rows; y++) {
         // the height at which the reflected sight line meets the buildings across the road
         const hm = (164 - y) / PX_PER_M;
         const Hh = hm + (hm - 1.6) * 1.57;
-        const sky = Hh > sk || sk < 1;
+        const sky = sk < 1 ? Hh > 3 : Hh > sk; // down the side street the sight line meets its far buildings first
         let c;
         if (sky) c = B.mix(skyTop, skyBot, clamp((sk + 9 - Hh) / 8, 0, 1)); // brightest low down, just above their roofs
-        else if (Hh < 0.3) c = cyber() ? '#24222c' : '#55524e'; // the road
-        else if (dusk) c = ((x >> 2) * 7 + (y >> 2) * 13) % 29 === 0 && (x & 3) < 2 && (y & 3) < 2 ? '#a87840' : '#16141e'; // dark frontages, a lit window or two
-        else c = (x % 14 < 9 && Hh > 0.8 && Hh < 2.6) || (x % 9 < 3 && Hh > 3.6 && Hh < 5) ? B.mix(wall, '#2a2a38', 0.5) : wall; // the shopfronts opposite: windows, and first-floor sashes
+        else if (g.skyOnly && Hh >= 0) continue;
+        else if (g.skyOnly) c = cyber() ? '#24222c' : B.mix('#55524e', '#2a2830', clamp(-Hh / 2, 0, 1)); // the road, darker nearer
+        else c = sk < 1 && Hh >= 0.3 ? (dusk ? (Hh > 1.2 && Hh < 1.8 && (x & 3) === 0 ? '#a87840' : '#1c1a24') : B.mix(wall, '#2a2a38', 0.6)) : frontage(xm, Hh, wall, dusk);
         g.fillStyle = c;
         g.fillRect(x, y, 1, 1);
         if (skyMask && sky) skyMask.fillRect(x, y, 1, 1);
@@ -524,14 +554,18 @@
       if (s.owner.area === 'street') people.push(s.owner);
       const Wn = B.LAYOUT.win;
       const dayAmt = clamp((P.e + 1) / 8, 0, 1);
-      const reflAmt = clamp((P.e + 7) / 9, 0, 1); // reflections hold through twilight: the bright sky outshines a dark shop
+      // reflections hold through twilight (the bright sky outshines a dark shop); after dark an unlit shop's glass
+      // still mirrors the lit shops and headlamps across the road
+      const nightRefl = B.oppositeStreet && F.streetLife ? clamp((-P.e - 4) / 6, 0, 1) * (s.shop.lights ? 0.35 : 0.9) : 0;
+      const reflAmt = Math.max(clamp((P.e + 7) / 9, 0, 1), nightRefl);
       // morning, sun behind the building: the shop's side wall in the alley faces SSE (52 deg off the sun) and catches
       // it above the shadow of the house across the 1.5 m alley
-      if (P.morning && sun.behind && P.e > 2 && S > 0.02) {
-        const k = clamp((P.e - 2) / 4, 0, 1) * cloudAt(s, 290) * S;
+      const cosD = Math.cos(rad((P.az != null ? P.az : 247.5 - P.phi) - 157.5));
+      if (cosD > 0.05 && P.e > 2 && S > 0.02) {
+        const k = clamp((P.e - 2) / 4, 0, 1) * clamp(cosD / 0.3, 0, 1) * cloudAt(s, 290) * S;
         const K = B.renderKit;
         if (K && K.AL && K.wallL) {
-          const litPx = Math.min(7, (1.5 * Math.tan(rad(P.e))) / 0.616) * PX_PER_M;
+          const litPx = Math.min(7, (1.5 * Math.tan(rad(P.e))) / cosD) * PX_PER_M;
           const y1 = Math.min(K.AL.bot, Math.round(K.AL.top + litPx));
           g.globalCompositeOperation = 'soft-light';
           g.globalAlpha = 0.6 * k;
@@ -555,6 +589,9 @@
           const mgx = reflCache.m.getContext('2d');
           mgx.clearRect(0, 0, W, H);
           mgx.fillStyle = '#000';
+          const Dg0 = B.LAYOUT.doorGlass;
+          const street = B.oppositeStreet && F.streetLife && B.oppositeStreet.paintFacade(rgx, s, [Wn, Dg0, ...B.LAYOUT.upstairs]);
+          rgx.skyOnly = !!street;
           paintReflection(rgx, s, sun, Wn.y, Wn.h, mgx);
           for (const u of B.LAYOUT.upstairs) paintReflection(rgx, s, sun, u.y, u.h, mgx);
           const Dg = B.LAYOUT.doorGlass;
@@ -564,6 +601,7 @@
         rg2.globalCompositeOperation = 'source-over';
         rg2.clearRect(0, 0, W, H);
         rg2.drawImage(reflCache.c, 0, 0);
+        if (B.oppositeStreet) B.oppositeStreet.paintLife(rg2, s); // people across the road, and the traffic
         // only on glass, and never over the people standing in front of it
         rg2.globalCompositeOperation = 'destination-in';
         rg2.fillStyle = '#000';
@@ -582,7 +620,7 @@
         g.rect(Wn.x, Wn.y, Wn.w, Wn.h);
         g.clip();
         g.globalCompositeOperation = 'multiply';
-        g.globalAlpha = 0.4 * dayAmt * (s.shop.lights ? 0.8 : 1);
+        g.globalAlpha = (B.oppositeStreet && F.streetLife ? 0.5 : 0.4) * dayAmt * (s.shop.lights ? 0.8 : 1);
         g.fillStyle = '#8a90a8';
         g.fillRect(Wn.x, Wn.y, Wn.w, Wn.h);
         g.restore();
@@ -593,24 +631,42 @@
         // at dusk the burning western sky (~500 cd/m2) mirrors at 8%: it outshines a lamp-lit room above the black
         // roofline, while below it the room shows through
         const duskK = !P.morning ? clamp((3 - P.e) / 3, 0, 1) * clamp((P.e + 8) / 2, 0, 1) : 0;
-        if (duskK > 0.02 && reflCache.m) {
-          tg.globalCompositeOperation = 'source-over';
-          tg.clearRect(0, 0, W, H);
-          tg.drawImage(reflCache.m, 0, 0);
-          tg.globalCompositeOperation = 'destination-in';
-          tg.drawImage(rc2, 0, 0);
-          tg.globalCompositeOperation = 'source-in';
-          tg.fillStyle = '#808080';
-          tg.fillRect(0, 0, W, H);
-          tg.globalCompositeOperation = 'source-over';
-          g.globalCompositeOperation = 'multiply';
-          g.globalAlpha = duskK * lamp;
-          g.drawImage(tc, 0, 0);
+        const streetK = B.oppositeStreet && F.streetLife ? 1 : 0;
+        // after dark a lit shop opposite (~100 cd/m2, 8% in the glass) outshines an unlit interior several times over
+        const base = Math.max((0.3 + 0.18 * streetK) * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.8 * nightRefl) * lamp;
+        // where the glass mirrors sky (~8% of 500-5000 cd/m2) it outshines the room behind: dim the room, screen the sky
+        const skyMul = Math.max(0.6 * dayAmt, duskK);
+        const skyA = Math.max(base, 0.55 * dayAmt, 0.65 * duskK) * lamp;
+        if (reflCache.m) {
+          if (skyMul > 0.02) {
+            tg.globalCompositeOperation = 'source-over';
+            tg.clearRect(0, 0, W, H);
+            tg.drawImage(reflCache.m, 0, 0);
+            tg.globalCompositeOperation = 'destination-in';
+            tg.drawImage(rc2, 0, 0);
+            tg.globalCompositeOperation = 'source-in';
+            tg.fillStyle = B.mix('#8a90a8', '#808080', duskK);
+            tg.fillRect(0, 0, W, H);
+            tg.globalCompositeOperation = 'source-over';
+            g.globalCompositeOperation = 'multiply';
+            g.globalAlpha = skyMul * lamp;
+            g.drawImage(tc, 0, 0);
+          }
           g.globalCompositeOperation = 'screen';
+          for (const skyPart of [false, true]) {
+            tg.globalCompositeOperation = 'source-over';
+            tg.clearRect(0, 0, W, H);
+            tg.drawImage(rc2, 0, 0);
+            tg.globalCompositeOperation = skyPart ? 'destination-in' : 'destination-out';
+            tg.drawImage(reflCache.m, 0, 0);
+            tg.globalCompositeOperation = 'source-over';
+            g.globalAlpha = clamp(skyPart ? skyA : base, 0, 1);
+            g.drawImage(tc, 0, 0);
+          }
+        } else {
+          g.globalAlpha = base;
+          g.drawImage(rc2, 0, 0);
         }
-        const base = 0.3 * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1) * lamp;
-        g.globalAlpha = clamp(base + duskK * (0.65 * reflAmt * lamp - base), 0, 1);
-        g.drawImage(rc2, 0, 0);
         g.globalAlpha = 1;
         g.globalCompositeOperation = 'source-over';
       }

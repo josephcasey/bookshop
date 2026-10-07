@@ -534,7 +534,8 @@
       s.shop.open = false;
       s.shop.lights = false;
       s.shop.locked = true;
-      s.upstairs.light = true;
+      s.upstairs.light = !B.sunPos || B.sunPos(h).e < -4; // the lamp waits for the afterglow to fade
+      s.upstairs.lampWaiting = !s.upstairs.light;
       s.upstairs.blind = 0;
       s.flags = { arrived: true, opened: true, closed: true, left: true };
       return;
