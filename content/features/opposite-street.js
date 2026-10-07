@@ -284,6 +284,7 @@
 
   function paintLife(g, s) {
     if (!F.streetLife) return;
+    paintSky(g, s);
     stepWalkers(s);
     const P = B.sunPos(s.hour);
     const night = clamp((-P.e - 1) / 6, 0, 1);
@@ -414,6 +415,93 @@
     }
   }
 
+  // ---------- the sky behind you, in the flat's windows ----------
+  // The upstairs panes look over the roofs opposite, so they mirror the sky and whatever crosses it: flying traffic in
+  // the neon city (three lanes at ~60, 100 and 160 m), and at home gulls, the odd airliner trailing a contrail, a
+  // helicopter's lights at night. Positions are kept in glass space; m is the mirror's scale at that distance.
+  const flyers = [];
+  let skyLast = 0;
+  function stepSky(s) {
+    const now = performance.now() / 1000;
+    const dt = skyLast ? clamp(now - skyLast, 0, 0.25) : 0;
+    skyLast = now;
+    const cy = cyber();
+    const P = B.sunPos(s.hour);
+    const spawn = (o) => flyers.push(Object.assign({ gx: o.dir > 0 ? -12 : 332, gy: B.rnd(21, 40), t: 0, seed: Math.random() }, o));
+    if (flyers.length < 8) {
+      if (cy && Math.random() < dt * 0.6) {
+        const lane = B.pick([60, 100, 160]);
+        const m = 14 / (14 + lane);
+        const dir = lane === 100 ? -1 : 1;
+        spawn({ kind: 'car', m, dir, v: 14 * PX * m * dir, gy: { 60: 24, 100: 31, 160: 37 }[lane] + B.rnd(-2, 2) });
+      }
+      if (!cy && P.e > -2 && Math.random() < dt * 0.05) spawn({ kind: 'gull', m: 14 / (14 + B.rnd(18, 40)), dir: B.chance(0.5) ? 1 : -1, v: 0 });
+      if (!cy && Math.random() < dt * 0.012) spawn({ kind: 'plane', m: 0.00175, dir: B.chance(0.5) ? 1 : -1, v: 0, gy: B.rnd(21, 30) });
+      if (!cy && P.e < -4 && Math.random() < dt * 0.006) spawn({ kind: 'heli', m: 0.045, dir: B.chance(0.5) ? 1 : -1, v: 0 });
+    }
+    for (const f of flyers) {
+      f.t += dt;
+      const ms = f.kind === 'gull' ? 8 : f.kind === 'plane' ? 230 : f.kind === 'heli' ? 45 : 0;
+      if (ms) f.v = ms * PX * f.m * f.dir;
+      f.gx += f.v * dt;
+      if (f.kind === 'gull') f.gy += Math.sin(f.t * 1.3 + f.seed * 6) * dt * 3;
+    }
+    for (let i = flyers.length - 1; i >= 0; i--) if (flyers[i].gx < -60 || flyers[i].gx > 380) flyers.splice(i, 1);
+  }
+  function paintSky(g, s) {
+    stepSky(s);
+    const P = B.sunPos(s.hour);
+    const night = clamp((-P.e - 1) / 6, 0, 1);
+    const t = performance.now() / 1000;
+    g.save();
+    g.beginPath();
+    for (const u of B.LAYOUT.upstairs) g.rect(u.x, u.y, u.w, u.h);
+    g.clip();
+    for (const f of flyers) {
+      const x = Math.round(f.gx);
+      const y = Math.round(f.gy);
+      if (f.kind === 'car') {
+        const w = Math.max(3, Math.round(4.5 * PX * f.m));
+        const h = Math.max(1, Math.round(1.4 * PX * f.m));
+        if (night < 0.7) {
+          g.fillStyle = '#16141e';
+          g.fillRect(x - (w >> 1), y - h, w, h);
+        }
+        g.fillStyle = '#e8f8ff';
+        g.fillRect(f.dir > 0 ? x + (w >> 1) - 1 : x - (w >> 1), y - h, 1, 1); // headlamp
+        g.fillStyle = '#ff3a4a';
+        g.fillRect(f.dir > 0 ? x - (w >> 1) : x + (w >> 1) - 1, y - 1, 1, 1); // tail
+        if (w > 6) {
+          g.fillStyle = ['#ff3fa4', '#3ff5ff', '#a26bff'][Math.floor(f.seed * 3)];
+          g.fillRect(x - (w >> 1) + 1, y, w - 2, 1); // an underglow strip
+        }
+      } else if (f.kind === 'gull') {
+        const up = Math.sin(t * 9 + f.seed * 6) > 0;
+        g.fillStyle = night > 0.3 ? '#3a3a44' : '#f4f4f0';
+        g.fillRect(x - 2, y - (up ? 1 : 0), 2, 1);
+        g.fillRect(x + 1, y - (up ? 1 : 0), 2, 1);
+        g.fillRect(x, y, 1, 1);
+      } else if (f.kind === 'plane') {
+        // a glint of an airliner and its contrail, catching the low sun pink at dusk
+        const tc = P.e < 4 && P.e > -6 ? '#f0c0b0' : '#ffffff';
+        for (let i = 1; i < 26; i++) {
+          g.fillStyle = tc;
+          g.globalAlpha = (1 - i / 26) * 0.7;
+          g.fillRect(x - f.dir * i, y, 1, 1);
+        }
+        g.globalAlpha = 1;
+        g.fillStyle = night > 0.6 ? (Math.floor(t * 1.5) % 2 ? '#ff4040' : '#000') : '#ffffff';
+        g.fillRect(x, y, 1, 1);
+      } else if (f.kind === 'heli') {
+        g.fillStyle = Math.floor(t * 2) % 2 ? '#ff3030' : '#300808';
+        g.fillRect(x, y, 1, 1);
+        g.fillStyle = Math.floor(t * 1.3 + 0.5) % 3 === 0 ? '#ffffff' : '#000';
+        g.fillRect(x + 2, y, 1, 1);
+      }
+    }
+    g.restore();
+  }
+
   /** The static reflection: the terrace through the mirror, into the given panes. */
   function paintFacade(g, s, panes) {
     g.save();
@@ -425,5 +513,5 @@
     return ok;
   }
 
-  B.oppositeStreet = { paintFacade, paintLife, layout, walkers };
+  B.oppositeStreet = { paintFacade, paintLife, layout, walkers, flyers };
 })(window.Bookshop);

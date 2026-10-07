@@ -324,6 +324,76 @@ async function shoot(tag, emit, report) {
     W0.length = 0;
     await emit('K-reflected-street', sh.c);
   }
+  // L: the street crew and the sky in the flat's windows
+  if (B.crew) {
+    const sh = sheet(3, 2, 320, 180, 2);
+    const C = B.crew;
+    const FL = B.oppositeStreet ? B.oppositeStreet.flyers : [];
+    const reset = () => {
+      C.drone = null;
+      C.picker = null;
+      C.lampOff = false;
+      C.lampFault = false;
+      C.dirt.fill(0.6);
+      C.wet.fill(0);
+      C.dirtUp.forEach((d) => d.fill(0.5));
+      C.wetUp.forEach((d) => d.fill(0));
+      FL.length = 0;
+    };
+    let i = 0;
+    // 1: the window cleaner halfway along, clean and wet behind him, grubby ahead
+    reset();
+    await scene('classic', 9.6, { people: false });
+    {
+      const n = B.spawn(s, 'window-cleaner', { fromLeft: true });
+      if (n) {
+        n.script = null;
+        Object.assign(n, { x: 96, moving: false, pose: 'backstand', hidden: false, alpha: 1, area: 'street', lane: -3 });
+        n.cleaner = { state: 'squeegee', gx: 122, gy: 100, bucket: 86 };
+      }
+      for (let k = 0; k < 26; k++) C.dirt[k] = 0;
+      for (let k = 18; k < 26; k++) C.wet[k] = 1 - (25 - k) / 8;
+    }
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'classic 9:36 window cleaner: clean & wet behind, grubby ahead');
+    // 2: the drone brushing the left pane at noon (shadow on the brick)
+    reset();
+    await scene('classic', B.sunPos(12).noon + 2, {});
+    C.drone = { x: 62, y: 30, state: 'brush', pane: 0, t: 1.5, hum: 1, passes: 0 };
+    for (let k = 0; k < 5; k++) C.dirtUp[0][k] = 0;
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'classic afternoon: cleaning drone on the flat window');
+    // 3: the cherry-picker crew at work
+    reset();
+    await scene('classic', 11.5, {});
+    C.picker = { state: 'work', x: 262, boom: 1, t: 5, cones: 2, spark: 0.1 };
+    C.lampOff = true;
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'classic 11:30 lamp crew in the cherry-picker');
+    // 4: the same at dusk, the amber beacon on the front
+    await scene('classic', B.sunTime(-3, true), {});
+    C.picker = { state: 'work', x: 262, boom: 1, t: 5, cones: 2, spark: 0 };
+    C.lampOff = true;
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'classic dusk: beacon turning, lamp dark while they work');
+    // 5: neon noon: flying traffic in the flat's windows, the air-con running
+    reset();
+    await scene('cyber', B.sunPos(12).noon, {});
+    for (const [gx, gy, m, dir] of [[60, 24, 0.19, 1], [78, 31, 0.123, -1], [170, 37, 0.08, 1], [182, 25, 0.19, -1]]) FL.push({ kind: 'car', gx, gy, m, dir, v: 0, t: 0, seed: gx / 200 });
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'cyber noon: sky traffic reflected upstairs, air-con running');
+    // 6: neon night, Mabel watching the telly: the reflection kept quiet over the screen
+    await scene('cyber', 21.2, {});
+    s.upstairs.light = true;
+    s.upstairs.tv = true;
+    Object.assign(s.owner, { area: 'upstairs', x: B.LAYOUT.upstairsSpots.chair, pose: 'sit', hidden: false, moving: false });
+    for (const [gx, gy, m, dir] of [[52, 26, 0.19, 1], [74, 33, 0.123, -1], [176, 30, 0.19, 1]]) FL.push({ kind: 'car', gx, gy, m, dir, v: 0, t: 0, seed: gx / 200 });
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'cyber night: telly on, sky reflection kept down');
+    reset();
+    s.upstairs.tv = false;
+    await emit('L-crew-sky', sh.c);
+  }
   // I: what single approaches bring (split screens: left ON, right OFF)
   if (B.lightFlags) {
     const sh = sheet(2, 2, 320, 180, 2);

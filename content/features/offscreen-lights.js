@@ -533,7 +533,7 @@
     // behind it, so doesn't block it)
     if (lampOn(s, dark)) pool(g, 262, 120, 70, 60, cyber() ? '#cfe8ff' : '#ffd890', 0.3 * dark);
   }
-  const lampOn = (s, dark) => (B.sunPos ? B.sunPos(s.hour).e < -2 : dark > 0.45) || (s.weather.fog || 0) > 0.5;
+  const lampOn = (s, dark) => !(B.lampOut && B.lampOut(s)) && ((B.sunPos ? B.sunPos(s.hour).e < -2 : dark > 0.45) || (s.weather.fog || 0) > 0.5); // (dark while it's faulty or being fixed)
 
   // ---------- shadows thrown up the shopfront ----------
   // Parallax: an occluder `d` in front of the facade, lit from a source `D` in front of it, throws its shadow

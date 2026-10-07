@@ -94,6 +94,7 @@
   /** Draw the picture onto the set in the flat (called by the themes' drawUpstairs). */
   B.tvScreen = function (g, x, y, w, h, s) {
     const f = tv.frame(s);
+    B.tvRect = f ? { x, y, w, h } : null; // (so the window's reflection can let the bright picture through)
     if (!f) return false;
     g.save();
     g.imageSmoothingEnabled = true; // average the picture down, like a small screen across the street would

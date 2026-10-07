@@ -292,6 +292,7 @@
 
   // ---------- the panel ----------
   B.on('ready', (s) => {
+    if (document.getElementById('labBtn')) return; // 'ready' fires again after a reset: one Lab is enough
     const btn = document.createElement('button');
     btn.id = 'labBtn';
     btn.title = 'Lighting lab: compare and benchmark each lighting approach';
