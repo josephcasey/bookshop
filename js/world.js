@@ -50,11 +50,76 @@
     'Dracula', 'Wuthering Heights', 'The Time Machine', 'Treasure Island', 'Cranford', 'The Woman in White',
   ];
 
-  B.daylight = (h) => {
-    if (h < 5.5 || h >= 20.5) return 0;
-    if (h < 7.5) return (h - 5.5) / 2;
-    if (h < 18.5) return 1;
-    return 1 - (h - 18.5) / 2;
+  // ---------- the sun ----------
+  // A real solar model for a London street (51.5 N) on today's date (so the seasons come for free), in clock time
+  // (BST in summer). The shopfront faces west-south-west (normal at 247.5 deg): phi is the sun's azimuth relative to
+  // that normal, positive = the sun is to the right of the viewer (shadows fall to the left).
+  const LAT = (51.5 * Math.PI) / 180;
+  const FACADE = 247.5;
+  let sunDate = null;
+  let sunConst = null;
+  function sunSetup(dateStr) {
+    if (sunDate === dateStr && sunConst) return sunConst;
+    const d = new Date((dateStr || '2026-06-21') + 'T12:00:00Z');
+    const y = d.getUTCFullYear();
+    const n = Math.floor((d - Date.UTC(y, 0, 0)) / 86400000);
+    const dec = ((23.44 * Math.sin((2 * Math.PI * (284 + n)) / 365)) * Math.PI) / 180;
+    // British Summer Time runs from the last Sunday of March to the last Sunday of October
+    const lastSun = (m) => {
+      const x = new Date(Date.UTC(y, m + 1, 0));
+      return x.getUTCDate() - x.getUTCDay();
+    };
+    const m = d.getUTCMonth();
+    const day = d.getUTCDate();
+    const bst = (m > 2 && m < 9) || (m === 2 && day >= lastSun(2)) || (m === 9 && day < lastSun(9));
+    sunDate = dateStr;
+    sunConst = { dec, noon: 12.1 + (bst ? 1 : 0) }; // solar noon in London (about 12:05 GMT give or take a few minutes)
+    return sunConst;
+  }
+  /** The sun at clock hour h today: elevation e (deg), azimuth az, and phi relative to the shopfront. */
+  B.sunPos = (h, dateStr = B.today) => {
+    const { dec, noon } = sunSetup(dateStr);
+    const H = ((15 * (h - noon)) * Math.PI) / 180;
+    const sinE = Math.sin(LAT) * Math.sin(dec) + Math.cos(LAT) * Math.cos(dec) * Math.cos(H);
+    const e = (Math.asin(B.clamp(sinE, -1, 1)) * 180) / Math.PI;
+    const az = (((Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(LAT) - Math.tan(dec) * Math.cos(LAT)) * 180) / Math.PI + 180) % 360 + 360) % 360;
+    const phi = ((((FACADE - az + 540) % 360) + 360) % 360) - 180;
+    return { e, az, phi, noon, morning: h < noon };
+  };
+  /** How much daylight there is (0 night .. 1 day), from the sun's elevation: civil and nautical twilight included. */
+  B.daylight = (h) => Math.pow(B.clamp((B.sunPos(h).e + 10) / 18, 0, 1), 1.5);
+  /** The clock hour when the sun is at elevation e (in the morning or the evening), today. */
+  B.sunTime = (e, evening = true) => {
+    const noon = B.sunPos(12).noon;
+    let lo = evening ? noon : noon - 12;
+    let hi = evening ? noon + 12 : noon;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      const em = B.sunPos(mid).e;
+      if (evening ? em > e : em < e) lo = mid;
+      else hi = mid;
+    }
+    return (((lo + hi) / 2) % 24 + 24) % 24;
+  };
+  /** How far into the night: 0 while the sun is up, 1 once it's 11 degrees below the horizon. */
+  B.nightness = (h) => B.clamp(-B.sunPos(h).e / 11, 0, 1);
+  /** The sky over the shop by the sun's height. We look east-north-east: at dawn towards the sunrise glow, in the
+   *  evening away from the sunset, at the anti-solar sky: pale lilac-blue, then the pink Belt of Venus above the
+   *  rising blue band of the earth's shadow, then blue hour. Keys: [elevation, top, near the roofs]. */
+  const SKY_EVE = [[-14, '#0b1026', '#141a3a'], [-9, '#1a2048', '#28305e'], [-6, '#2a3462', '#3a4a80'], [-3.5, '#7a7aa8', '#4a5a86'], [-1, '#c89aaa', '#5a6a96'], [1.5, '#a8b4d4', '#d8b8c4'], [5, '#8ab4dc', '#c8d6e6'], [10, '#7fb2e0', '#b5d6ee']];
+  const SKY_DAWN = [[-14, '#0b1026', '#141a3a'], [-9, '#1a2048', '#28305e'], [-5, '#2a3462', '#5a4a70'], [-2, '#4a5a90', '#d8907a'], [1.5, '#7a9ccc', '#f0b888'], [5, '#86b2dc', '#e6cfae'], [10, '#7fb2e0', '#b5d6ee']];
+  const SKY_EVE_CY = [[-14, '#05040c', '#1c0c2c'], [-9, '#1a0d2e', '#4a1848'], [-5, '#3a2050', '#6a2a5a'], [-2, '#6a4a7a', '#c8708a'], [2, '#7a7290', '#c89aa0'], [8, '#6e7280', '#b09a84']];
+  const SKY_DAWN_CY = [[-14, '#05040c', '#1c0c2c'], [-8, '#1a0d2e', '#3a1438'], [-3, '#2a1236', '#7a3a4a'], [2, '#5a4a60', '#c47a62'], [8, '#6e7280', '#b09a84']];
+  B.skyByElevation = (h, cyber) => {
+    const P = B.sunPos(h);
+    const keys = cyber ? (P.morning ? SKY_DAWN_CY : SKY_EVE_CY) : P.morning ? SKY_DAWN : SKY_EVE;
+    const e = B.clamp(P.e, keys[0][0], keys[keys.length - 1][0]);
+    let i = 0;
+    while (i < keys.length - 2 && keys[i + 1][0] <= e) i++;
+    const [e0, a0, b0] = keys[i];
+    const [e1, a1, b1] = keys[i + 1];
+    const t = B.clamp((e - e0) / (e1 - e0 || 1), 0, 1);
+    return [B.mix(a0, a1, t), B.mix(b0, b1, t), P.e];
   };
 
   // ---------- shelves ----------

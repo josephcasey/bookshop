@@ -268,6 +268,11 @@
     [24, '#0b1026', '#141a3a'],
   ];
   function skyColors(h, cloud) {
+    if (B.skyByElevation) {
+      const [a, b] = B.skyByElevation(h, false);
+      const grey = B.daylight(h) > 0.3 ? '#8e96a0' : '#1c1f2a';
+      return [B.mix(a, grey, cloud * 0.55), B.mix(b, grey, cloud * 0.55)];
+    }
     let i = 0;
     while (i < SKY.length - 2 && SKY[i + 1][0] <= h) i++;
     const [h0, a0, b0] = SKY[i];
@@ -283,7 +288,9 @@
     px(g, top, 0, 0, 320, 4);
     px(g, bot, 0, 4, 320, 5);
     const day = B.daylight(s.hour);
-    if (day < 0.4 && s.weather.cloud < 0.7) for (const [x, y, i] of STARS) if (Math.floor(s.simT * 0.7 + i) % 7) px(g, 'rgba(255,255,230,0.8)', x, y);
+    const se = B.sunPos ? B.sunPos(s.hour).e : -20;
+    // stars once the sun is 6 degrees down: the first one alone, then the rest
+    if (se < -6 && s.weather.cloud < 0.7) for (const [x, y, i] of STARS) if ((se < -8 || i === 7) && Math.floor(s.simT * 0.7 + i) % 7) px(g, 'rgba(255,255,230,0.8)', x, y);
     const cc = day > 0.3 ? 'rgba(255,255,255,0.55)' : 'rgba(80,90,120,0.5)';
     const n = 2 + Math.round(s.weather.cloud * 4);
     for (let i = 0; i < n; i++) {
@@ -977,8 +984,8 @@
     B.chalkLines().forEach((line, i) => B.text(g, line, 297 - Math.floor(B.textWidth(line) / 2), 147 + i * 6, 'rgba(240,238,225,0.92)'));
   }
 
-  function drawStreetLamp(g, day, fog = 0) {
-    const on = day < 0.5 || fog > 0.5;
+  function drawStreetLamp(g, day, fog = 0, s) {
+    const on = (s && B.sunPos ? B.sunPos(s.hour).e < -2 : day < 0.5) || fog > 0.5; // a photocell: on at about -2 degrees
     if (fog > 0.5) day = Math.min(day, 0.3); // lit in the fog, with a bigger halo
     px(g, on ? '#ffe7a0' : '#9fb3b8', LAMP - 5, 9, 11, 11);
     if (!on) return;
@@ -1256,7 +1263,7 @@
 
     // ----- night -----
     if (B.snapExterior) B.snapExterior(g); // the street's true colours, before night falls on them (for lights to reveal)
-    const night = (1 - day) * 0.6 + s.weather.cloud * 0.08 * day;
+    const night = (B.nightness ? B.nightness(s.hour) : 1 - day) * 0.6 + s.weather.cloud * 0.08 * day; // no night until the sun has set
     if (night > 0.01) {
       g.fillStyle = part('nightTint')(night);
       g.beginPath();

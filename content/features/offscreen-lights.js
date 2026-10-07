@@ -533,7 +533,7 @@
     // behind it, so doesn't block it)
     if (lampOn(s, dark)) pool(g, 262, 120, 70, 60, cyber() ? '#cfe8ff' : '#ffd890', 0.3 * dark);
   }
-  const lampOn = (s, dark) => dark > 0.45 || (s.weather.fog || 0) > 0.5;
+  const lampOn = (s, dark) => (B.sunPos ? B.sunPos(s.hour).e < -2 : dark > 0.45) || (s.weather.fog || 0) > 0.5;
 
   // ---------- shadows thrown up the shopfront ----------
   // Parallax: an occluder `d` in front of the facade, lit from a source `D` in front of it, throws its shadow
@@ -932,7 +932,7 @@
         gAdd.globalAlpha = 1;
       }
       // dust drifting in a strong beam
-      if (rcv.reveal && src.a > 0.35) {
+      if (rcv.reveal && (src.a > 0.35 || (src.motes && src.a > 0.12))) {
         const g0 = g;
         g = gAdd;
         g.globalCompositeOperation = 'lighter';

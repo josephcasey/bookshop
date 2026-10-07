@@ -266,6 +266,11 @@
     [24, '#05040c', '#1c0c2c'],
   ];
   function skyColors(h, cloud) {
+    if (B.skyByElevation) {
+      const [a, b] = B.skyByElevation(h, true);
+      const smog = B.daylight(h) > 0.3 ? '#7a7680' : '#140e22';
+      return [B.mix(a, smog, cloud * 0.5), B.mix(b, smog, cloud * 0.5)];
+    }
     let i = 0;
     while (i < SKY.length - 2 && SKY[i + 1][0] <= h) i++;
     const [h0, a0, b0] = SKY[i];
@@ -593,7 +598,7 @@
       lighter(g, () => {
         const gr = g.createLinearGradient(0, 46, 0, 80);
         gr.addColorStop(0, rgba(C.pink, 0));
-        gr.addColorStop(0.5, rgba(C.pink, (day > 0.6 ? 0.06 : 0.16) * (1 + fog)));
+        gr.addColorStop(0.5, rgba(C.pink, 0.16 * (1 - 0.7 * day) * (1 + fog))); // neon looks thin in daylight, strikes up at dusk
         gr.addColorStop(1, rgba(C.pink, 0));
         g.fillStyle = gr;
         g.fillRect(0, 46, 274, 34);
@@ -916,7 +921,7 @@
     px(g, rgba('#ffffff', 0.12), X - 5, 59 + (Math.floor(t * 12) % 24), 11, 1);
     lighter(g, () => glow(g, X, 71, 14 + fog * 8, rgba(col, (day > 0.6 ? 0.08 : 0.22) * (1 + fog * 0.5))));
     // the light bar
-    const on = day < 0.6 || fog > 0.4;
+    const on = (s && B.sunPos ? B.sunPos(s.hour).e < -1 : day < 0.6) || fog > 0.4;
     px(g, on ? '#e8f8ff' : '#7a8494', X - 8, 13, 17, 1);
     if (!on) return;
     lighter(g, () => {

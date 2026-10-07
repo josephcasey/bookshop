@@ -18,6 +18,7 @@
     ['sun', 'Sunlight', 'The sun and its shadows on the front: ledges, recesses, lamp post, people, cars'],
     ['buildingShadow', 'Opposite buildings', 'The skyline across the road shading the front as the sun sinks'],
     ['cloudShadows', 'Cloud shadows', 'Patches of shade drifting across the street'],
+    ['glassReflection', 'Glass reflects the street', 'By day the window mirrors the bright street behind you, until dusk'],
     ['sunInterior', 'Sun through the glass', 'The window’s sunlit patch on the back wall, props and all'],
     ['headlights', 'Traffic light', 'Cars, buses, bikes and emergency vehicles as light sources'],
     ['steadyLights', 'Steady lights', 'The pub, chippy, signs and the street lamp'],
@@ -37,13 +38,15 @@
     ['palette', 'Locked palette', 'The finished frame snapped to one fixed palette'],
   ];
 
+  // moments defined by the sun (so they follow the seasons), or by the clock: [name, hour or (()=>hour), weather, cloud, traffic]
   const SCENARIOS = [
-    ['Morning', 9.0, 'clear', 0.15, null],
-    ['Noon', 12.5, 'clear', 0.25, 'car'],
-    ['Afternoon sun', 17.0, 'clear', 0.15, 'car'],
-    ['Golden hour', 19.6, 'clear', 0.1, 'car'],
-    ['Cloudy day', 14.0, 'cloudy', 0.7, 'bus'],
-    ['Dusk traffic', 20.4, 'clear', 0.1, 'turn'],
+    ['Morning', () => B.sunTime(14, false), 'clear', 0.15, null],
+    ['Noon', () => B.sunPos(12).noon, 'clear', 0.25, 'car'],
+    ['Afternoon sun', () => B.sunTime(22, true), 'clear', 0.15, 'car'],
+    ['Golden hour', () => B.sunTime(5, true), 'clear', 0.1, 'car'],
+    ['Cloudy day', () => B.sunPos(12).noon + 1.5, 'cloudy', 0.7, 'bus'],
+    ['Sunset glow', () => B.sunTime(-2, true), 'clear', 0.1, 'turn'],
+    ['Blue hour', () => B.sunTime(-6, true), 'clear', 0.1, 'turn'],
     ['Night turn', 21.8, 'clear', 0.1, 'turn'],
     ['Night rain', 22.4, 'rain', 0.8, 'car'],
     ['Fog', 23.0, 'fog', 0.6, 'turn'],
@@ -174,8 +177,9 @@
   // ---------- scenarios ----------
   function play(sc) {
     const s = B.world;
-    const [, hour, weather, cloud, traffic] = sc;
+    const [, when, weather, cloud] = sc;
     lab.scenario = sc;
+    const hour = typeof when === 'function' ? when() : when;
     B.jumpTo(s, hour);
     B.setWeatherKind(s, weather);
     s.weather.cloud = cloud;

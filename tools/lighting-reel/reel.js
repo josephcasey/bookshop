@@ -234,7 +234,8 @@ async function shoot(tag, emit, report) {
   for (const theme of ['classic', 'cyber']) {
     const sh = sheet(3, 2, 320, 180, 2);
     let i = 0;
-    for (const hr of [9, 12, 15, 17, 18.9, 19.7]) {
+    const sunHours = [B.sunTime(14, false), B.sunPos(12).noon, B.sunTime(25, true), B.sunTime(12, true), B.sunTime(4, true), B.sunTime(-2.5, true)];
+    for (const hr of sunHours) {
       await scene(theme, hr, {});
       s.weather.cloud = 0.15;
       setTraffic([{ kind: 'car', dur: 2.8, t: 1.2, dir: 1 }]);
@@ -246,20 +247,19 @@ async function shoot(tag, emit, report) {
   // H: early evening: golden hour with traffic, dusk turn, a cloudy afternoon's drifting shadows
   {
     const sh = sheet(2, 2, 320, 180, 2);
-    await scene('classic', 19.5, {});
+    await scene('classic', B.sunTime(5, true), {});
     setTraffic([{ kind: 'bus', dur: 4.2, t: 1.6, dir: 1 }]);
-    sh.put(0, frame(), 0, 0, 'classic 19:30 golden hour, a bus passing');
-    await scene('classic', 20.4, { mabelInside: true });
+    sh.put(0, frame(), 0, 0, 'classic golden hour (sun 5 deg), a bus passing');
+    await scene('classic', B.sunTime(-5, true), { mabelInside: true });
     setTraffic([{ kind: 'turn', dir: 1, jx: 70, dur: 4.65, t: 2.0, main: true }]);
-    sh.put(1, frame(), 0, 0, 'classic 20:24 dusk, main-beam turn');
-    await scene('cyber', 20.0, {});
+    sh.put(1, frame(), 0, 0, 'classic blue hour (sun -5 deg), main-beam turn');
+    await scene('cyber', B.sunTime(-2, true), {});
     setTraffic([{ kind: 'car', dur: 2.8, t: 1.0, dir: -1 }]);
-    sh.put(2, frame(), 0, 0, 'cyber 20:00 dusk, car passing');
-    await scene('classic', 14.0, {});
-    s.weather.cloud = 0.7;
-    s.simT = 1000;
+    sh.put(2, frame(), 0, 0, 'cyber sunset glow (sun -2 deg), car passing');
+    await scene('classic', B.sunTime(22, true), {});
+    s.weather.cloud = 0.62;
     setTraffic([]);
-    sh.put(3, frame(), 0, 0, 'classic 14:00 broken cloud: drifting shadows');
+    sh.put(3, frame(), 0, 0, 'classic afternoon, broken cloud: a cloud shadow sweeping across');
     await emit('H-evening', sh.c);
   }
   // I: what single approaches bring (split screens: left ON, right OFF)
@@ -282,16 +282,16 @@ async function shoot(tag, emit, report) {
       cg.fillRect(160, 0, 1, 180);
       sh.put(i, c, 0, 0, `${label}: left ON | right OFF`);
     };
-    await scene('classic', 12.5, {});
-    split('sun', 'noon: sunlight', 0);
-    await scene('classic', 19.7, {});
+    await scene('classic', B.sunTime(22, true), {});
+    split('sun', 'afternoon: sunlight', 0);
+    await scene('classic', B.sunTime(5, true), {});
     split('buildingShadow', 'golden hour: opposite buildings', 1);
-    await scene('classic', 21.8, { mabelInside: true });
-    setTraffic([{ kind: 'turn', dir: 1, jx: 70, dur: 4.65, t: 2.0, main: true }]);
-    split('palette', 'night turn: locked palette', 2);
-    await scene('classic', 17.0, { mabelInside: false });
+    await scene('classic', B.sunTime(12, true), { mabelInside: false });
     setTraffic([]);
-    split('sunInterior', '17:00: sun through the glass', 3);
+    split('sunInterior', 'late afternoon: sun through the glass', 2);
+    await scene('classic', B.sunPos(12).noon, { mabelInside: false });
+    setTraffic([]);
+    split('glassReflection', 'noon: the glass reflects the street', 3);
     await emit('I-approaches', sh.c);
   }
   setTraffic([]);
