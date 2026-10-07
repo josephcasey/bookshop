@@ -665,7 +665,8 @@
           // in a lit flat the reflected sky takes only its physical share: R*Lsky / (R*Lsky + Lroom)
           const Lroom = s.upstairs && s.upstairs.light ? 20 : s.upstairs && s.upstairs.tv ? 2 : 0;
           const share = Lroom ? (0.08 * skyLum(P.e)) / (0.08 * skyLum(P.e) + Lroom) : 1;
-          const skyA = Math.min(Math.max(base, 0.55 * dayAmt, 0.65 * duskK) * lamp, P.e < 2 ? share : 1);
+          // (the flat's sky mirror doesn't depend on the shop's lamps below it)
+          const skyA = Math.min(Math.max(0.3 * reflAmt, 0.55 * dayAmt, 0.65 * duskK, 0.5 * clamp((-P.e - 4) / 6, 0, 1)) * lamp, P.e < 2 ? share : 1);
           if (reflCache.m) {
             if (skyMul > 0.02) {
               tg.globalCompositeOperation = 'source-over';

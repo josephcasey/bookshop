@@ -94,6 +94,13 @@
           if (cyber() && (state.pendantL || state.pendantR)) B.px(g, '#d8e8ff', 9, 81, 202, 1); // the ceiling strip
         };
       }
+      const sp = owner.shopSpill;
+      if (sp) {
+        owner.shopSpill = function (g, s, day, lit) {
+          if (!F.shopLamps) return sp.call(this, g, s, day, lit);
+          spill(g, s, day);
+        };
+      }
       const il = owner.interiorLight;
       if (il) {
         owner.interiorLight = function (g, s, day, lit) {
@@ -142,7 +149,7 @@
       const y0 = l.y - (l.shade === 'pendant' ? 1 : 0);
       g.beginPath();
       g.moveTo(-10, H);
-      for (let x = -10; x <= W + 10; x += 4) g.lineTo(x, y0 + cot * Math.sqrt((x - l.x) * (x - l.x) + h * h) - cot * h);
+      for (let x = -10; x <= W + 10; x += 4) g.lineTo(x, y0 + cot * Math.sqrt((x - l.x) * (x - l.x) + h * h)); // vertex h*cot below the bulb
       g.lineTo(W + 10, H);
       g.closePath();
       g.save();
@@ -158,8 +165,10 @@
     const cast = (c, z, cap) => {
       if (z <= l.z + 1.5) return; // in front of the lamp: it can't shadow the wall
       const k = Math.min(cap, (Z - l.z) / (z - l.z)); // projected about the bulb onto the wall
-      for (const ox of [-1, 1]) {
-        g.globalAlpha = 0.5; // two halves of the bulb: a solid core where both are hidden, a 1-step penumbra
+      const pw = clamp(Math.round((1.4 * (Z - z)) / (z - l.z) / 2), 1, 3); // the bulb's size blurs it: w = s (Z-z)/(z-z_l)
+      const offs = pw === 1 ? [-1, 1] : pw === 2 ? [-2, 0, 2] : [-3, -1, 1, 3];
+      for (const ox of offs) {
+        g.globalAlpha = 1 / offs.length; // stepped: a solid core where all are hidden, then the penumbra in steps
         g.setTransform(k, 0, 0, k, (l.x + ox) * (1 - k), l.y * (1 - k));
         g.drawImage(c, 0, 0);
       }
@@ -224,11 +233,74 @@
     g.save();
     g.globalCompositeOperation = 'lighter';
     for (const l of list) {
-      if (l.shade === 'pendant') glow(l.x, l.y + 1, 9, rgba(col, 0.35 + 0.25 * (1 - day)));
-      else glow(l.x, l.y + 2, 7, rgba(deskCol, 0.3 + 0.2 * (1 - day)));
+      if (l.shade === 'pendant') {
+        // seen from ~14 m out the bulb is hidden by the shade: its lower rim glows, and the open top throws a small
+        // scallop on the ceiling
+        g.fillStyle = rgba(col, 0.7);
+        g.fillRect(l.x - 5, l.y, 11, 1);
+        g.save();
+        g.translate(l.x, 82);
+        g.scale(1, 0.3);
+        glow(0, 0, 11, rgba(col, 0.22 + 0.15 * (1 - day)));
+        g.restore();
+      } else {
+        // the desk lamp's tight pool on the counter top (v ~8 px above it: half power at ~6 px)
+        g.save();
+        g.translate(l.x, l.y + 9);
+        g.scale(1, 0.3);
+        glow(0, 0, 10, rgba(deskCol, 0.35 + 0.2 * (1 - day)));
+        g.restore();
+      }
     }
     g.restore();
   }
+  // light spilling out of the window onto the pavement: from the lamps that are on, with the silhouettes of anyone
+  // standing between a lamp and the glass thrown out across it
+  let pc = null;
+  let pg = null;
+  function spill(g, s, day) {
+    const list = LAMPS().filter((l) => isOn(s, l.id));
+    if (!list.length || day >= 0.8) return;
+    if (!pc) [pc, pg] = mk();
+    if (!pg) return;
+    const Wn = B.LAYOUT.win;
+    const k = list.reduce((a, l) => a + (l.shade === 'pendant' ? 0.5 : 0.15), 0);
+    pg.clearRect(0, 0, W, H);
+    pg.fillStyle = cyber() ? `rgba(160,200,255,${((0.8 - day) * 0.14 * k).toFixed(3)})` : `rgba(255,170,90,${((0.8 - day) * 0.14 * k).toFixed(3)})`;
+    pg.beginPath();
+    pg.moveTo(Wn.x, 164);
+    pg.lineTo(Wn.x + Wn.w, 164);
+    pg.lineTo(Wn.x + Wn.w + 20, 180);
+    pg.lineTo(Wn.x - 20, 180);
+    pg.fill();
+    const kit = B.lightKit;
+    const people = kit && kit.SHOP && kit.SHOP.people ? kit.SHOP.people(s).filter(([, z]) => z > 0) : [];
+    pg.globalCompositeOperation = 'destination-out';
+    for (const l of list) {
+      for (const [a, z] of people) {
+        if (z >= l.z) continue; // only those between this lamp and the glass
+        // out through the glass and down onto the paving: a wedge that widens and leans away from the lamp
+        const m = clamp((l.z + 8) / (l.z - z), 1, 2.5);
+        const dx = (a.x - l.x) * 0.25;
+        pg.globalAlpha = 0.6 / list.length;
+        pg.fillStyle = '#000';
+        pg.beginPath();
+        pg.moveTo(a.x - 3, 164);
+        pg.lineTo(a.x + 3, 164);
+        pg.lineTo(a.x + dx + 3 * m, 180);
+        pg.lineTo(a.x + dx - 3 * m, 180);
+        pg.closePath();
+        pg.fill();
+      }
+    }
+    pg.globalAlpha = 1;
+    pg.globalCompositeOperation = 'source-over';
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(pc, 0, 0);
+    g.restore();
+  }
+
   let sc = null;
   let sg = null;
   function scratch() {

@@ -296,18 +296,18 @@
   });
   function startPicker(s) {
     if (crew.picker) return;
-    crew.picker = { state: 'arrive', x: -90, boom: 0, t: 0, cones: 0, spark: 0 };
+    crew.picker = { state: 'arrive', x: 420, boom: 0, t: 0, cones: 0, spark: 0 };
     B.spawn(s, 'lamp-crew', { fromLeft: true });
     B.log(B.pick(['A council cherry-picker pulls up by the street lamp.', 'The lamp crew are here to sort out the flickering street light.']));
   }
-  const PARK = 296; // the truck's centre when parked (in the road in front of the pavement, its cab off to the right)
+  const PARK = 290; // the truck's centre when parked (in the road in front of the pavement, cab leading, to the left)
   function stepPicker(s, dt) {
     const p = crew.picker;
     if (!p) return;
     p.t += dt;
     if (p.state === 'arrive') {
-      p.x += dt * Math.max(8, Math.min(60, (PARK - p.x) * 1.2));
-      if (PARK - p.x < 0.5) {
+      p.x -= dt * Math.max(8, Math.min(60, (p.x - PARK) * 1.2));
+      if (p.x - PARK < 0.5) {
         p.x = PARK;
         p.state = 'wait';
         p.t = 0;
@@ -353,8 +353,8 @@
         p.t = 0;
       }
     } else if (p.state === 'leave') {
-      p.x += dt * Math.min(70, 10 + p.t * 30);
-      if (p.x > 420) crew.picker = null;
+      p.x -= dt * Math.min(70, 10 + p.t * 30);
+      if (p.x < -90) crew.picker = null;
     }
   }
 
@@ -382,7 +382,7 @@
       const bx = x0 + Math.floor((i * w) / nb);
       const bw = Math.max(1, Math.floor(((i + 1) * w) / nb) - Math.floor((i * w) / nb));
       if (d > 0.05) {
-        const n = Math.round(d * h * 0.35);
+        const n = Math.round(d * h * 0.35 * (sunny ? 2 : 1));
         const a = d * lightK;
         if (a > 0.01) {
           // a faint veil, then the specks (road spray: more toward the bottom)
@@ -526,23 +526,22 @@
     const X = Math.round(p.x);
     const LAMPX = (B.renderKit && B.renderKit.LAMP) || 277;
     const k = p.boom;
-    const base = [X - 18, 171];
+    const base = [X + 18, 171];
     const target = [LAMPX - 13, 27];
     // the knuckle swings out to the right as the boom unfolds
-    const knee = [base[0] + 16 * k, base[1] - 74 * k];
+    const knee = [base[0] + 10 * k, base[1] - 74 * k];
     const tip = [knee[0] + (target[0] - knee[0]) * k, knee[1] + (target[1] - knee[1]) * k + (1 - k) * 4];
     return { X, LAMPX, base, knee, tip };
   }
   const thick = (g, a, b, w, top, under) => {
     const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1])));
-    for (let i = 0; i <= n; i++) {
-      const x = Math.round(a[0] + ((b[0] - a[0]) * i) / n);
-      const y = Math.round(a[1] + ((b[1] - a[1]) * i) / n);
-      g.fillStyle = under;
-      g.fillRect(x - (w >> 1), y - (w >> 1), w, w);
-      g.fillStyle = top;
-      g.fillRect(x - (w >> 1), y - (w >> 1), w, 1); // lit along its top edge
-    }
+    const pts = [];
+    for (let i = 0; i <= n; i++) pts.push([Math.round(a[0] + ((b[0] - a[0]) * i) / n), Math.round(a[1] + ((b[1] - a[1]) * i) / n)]);
+    g.fillStyle = under; // a solid body...
+    for (const [x, y] of pts) g.fillRect(x - (w >> 1), y - (w >> 1), w, w);
+    if (top === under) return;
+    g.fillStyle = top; // ...then one continuous lit edge on the side the sky lights
+    for (const [x, y] of pts) g.fillRect(x - (w >> 1), y - (w >> 1), 1, 1);
   };
   // the cones go on the pavement (behind passers-by)
   B.decor({
@@ -581,7 +580,7 @@
     const k = clamp((2 - P.e) / 8, 0, 1);
     const t = performance.now() / 1000;
     const ph = (t * 1.5) % 1;
-    const bxs = r.X + 26;
+    const bxs = r.X - 32;
     if (ph >= 0.5 || k <= 0.01) return { ph, bxs, on: ph < 0.5 };
     const th = clamp((2 * ph - 0.5) * Math.PI, -1.4, 1.4);
     const c = Math.cos(th);
@@ -646,31 +645,31 @@
       const body = cy ? '#2a2a3a' : '#e8e6de';
       const bodyD = cy ? '#1a1a26' : '#b8b6ae';
       const stripe = cy ? '#ff8a1a' : '#e0701a';
-      // the flatbed over the bottom edge, outriggers down, the cab's nose at the right
+      // the cab leading on the left, the flatbed behind it running off the right edge, outriggers down
       g.fillStyle = body;
-      g.fillRect(X - 44, 175, 66, 5);
-      g.fillStyle = bodyD;
-      g.fillRect(X - 44, 178, 66, 2);
-      g.fillStyle = stripe;
-      for (let x = X - 44; x < X + 22; x += 6) g.fillRect(x, 175, 3, 1); // chevrons
-      g.fillStyle = body;
-      g.fillRect(X + 22, 166, 22, 14); // the cab
-      g.fillRect(X + 40, 170, 6, 10); // its nose
+      g.fillRect(X - 46, 166, 24, 14); // the cab
+      g.fillRect(X - 50, 171, 6, 9); // its nose
       g.fillStyle = cy ? '#0c0e16' : '#2a3038';
-      g.fillRect(X + 25, 168, 13, 5); // windscreen
+      g.fillRect(X - 43, 168, 14, 5); // windscreen
+      g.fillStyle = cy ? '#3ff5ff' : '#f0e8c0';
+      g.fillRect(X - 50, 174, 2, 2); // a sidelight
+      g.fillStyle = body;
+      g.fillRect(X - 22, 174, 70, 6); // the bed
       g.fillStyle = bodyD;
-      g.fillRect(X + 22, 178, 24, 2);
+      g.fillRect(X - 46, 178, 94, 2);
+      g.fillStyle = stripe;
+      for (let x = X - 22; x < X + 48; x += 6) g.fillRect(x, 175, 3, 1); // chevrons
       g.fillStyle = '#3a3a40';
-      g.fillRect(X - 46, 176, 2, 4); // outrigger
+      g.fillRect(X + 46, 176, 2, 4); // an outrigger
       // the beacon on the cab roof: a hard 2x2 head
       const t = performance.now() / 1000;
       const ph = (t * 1.5) % 1;
       g.fillStyle = ph < 0.5 ? '#ffc040' : '#8a5010';
-      g.fillRect(X + 26, 164, 2, 2);
+      g.fillRect(X - 35, 164, 2, 2);
       // the boom: turntable, lower arm with its ram, knuckle, upper arm to the basket
       g.fillStyle = '#3a3a40';
       g.fillRect(r.base[0] - 4, 169, 9, 6);
-      const lo = cy ? ['#8a8a9a', '#4a4a5a'] : ['#f4f2ea', '#a8a69e'];
+      const lo = cy ? ['#8a8a9a', '#4a4a5a'] : ['#c8c6c0', '#7a7a80']; // a mid-grey lower boom with one lit edge
       const hi = cy ? ['#ffb050', '#c05a10'] : ['#f0a040', '#b05010'];
       thick(g, r.base, r.knee, 3, lo[0], lo[1]);
       thick(g, [r.base[0] + 3, r.base[1] - 2], [r.base[0] + (r.knee[0] - r.base[0]) * 0.55 + 3, r.base[1] + (r.knee[1] - r.base[1]) * 0.55], 1, '#c8c8cc', '#c8c8cc'); // ram
@@ -721,11 +720,11 @@
       if (ph < 0.5 && P.e < 6) {
         g.save();
         g.globalCompositeOperation = 'lighter';
-        const gb = g.createRadialGradient(X + 27, 165, 0, X + 27, 165, 7);
+        const gb = g.createRadialGradient(X - 34, 165, 0, X - 34, 165, 7);
         gb.addColorStop(0, `rgba(255,190,60,${(0.5 * clamp((6 - P.e) / 10, 0.2, 1)).toFixed(3)})`);
         gb.addColorStop(1, 'rgba(255,190,60,0)');
         g.fillStyle = gb;
-        g.fillRect(X + 20, 158, 14, 14);
+        g.fillRect(X - 41, 158, 14, 14);
         g.restore();
       }
     },
