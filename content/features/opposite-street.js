@@ -83,96 +83,137 @@
     return b > 24 ? h >= a || h < b - 24 : h >= a && h < b;
   };
 
-  // ---------- painting the facade ----------
-  let fc = null;
-  let fg = null;
-  let fkey = '';
-  function facade(s) {
+  // ---------- painting the facade, straight into the glass at screen resolution ----------
+  // (a 2.57x reduction of detailed art only aliases: each shop is authored at the size it appears, with one signature
+  // that survives: a fascia hue, an awning's stripes, a barber's pole, a row of portholes)
+  const gx = (x) => 160 + (x - 160) / MAG;
+  const gy = (h) => 164 - PX * (EYE + (h - EYE) / MAG);
+  function paintTerrace(g, s) {
     const L = layout();
-    if (!L) return null;
-    if (!fc) {
-      fc = document.createElement('canvas');
-      fc.width = FW;
-      fc.height = FH;
-      fg = fc.getContext('2d');
-    }
-    if (!fg) return null;
+    if (!L) return false;
     const P = B.sunPos(s.hour);
     const night = P.e < -1;
     const dark = clamp((-P.e - 1) / 6, 0, 1);
-    const key = `${B.theme}|${Math.round(s.hour * 12)}|${night}`;
-    if (key === fkey) return fc;
-    fkey = key;
-    const g = fg;
-    g.clearRect(0, 0, FW, FH);
-    const R = (x, h0, w, hh, c) => {
-      g.fillStyle = c;
-      g.fillRect(Math.round(x - X0), rowOf(h0 + hh), Math.round(w), Math.max(1, Math.round(hh * PX)));
-    };
     const cy = cyber();
-    const dim = (c) => (night ? B.mix(c, cy ? '#06050c' : '#14121c', 0.82 * dark + 0.1) : c);
+    const BLACK = cy ? '#05040a' : '#0b0a10';
+    const dim = (c) => (night ? B.mix(c, BLACK, 0.6 + 0.4 * dark) : c);
+    // a rect in street x (px) and height (m)
+    const R = (x0, x1, h0, h1, c) => {
+      const a = Math.round(gx(x0));
+      const b = Math.max(a + 1, Math.round(gx(x1)));
+      const top = Math.round(gy(h1));
+      const bot = Math.max(top + 1, Math.round(gy(h0)));
+      g.fillStyle = c;
+      g.fillRect(a, top, b - a, bot - top);
+    };
+    // ...or in glass pixels from a street-x anchor
+    const P1 = (x, h, w, hh, c) => {
+      g.fillStyle = c;
+      g.fillRect(Math.round(gx(x)), Math.round(gy(h)), w, hh);
+    };
+    const tint = night ? null : P.morning && P.e > 0 ? 'rgba(255,200,140,0.22)' : 'rgba(60,70,110,0.14)';
     for (const b of L) {
+      const x0 = b.x;
+      const x1 = b.x + b.w;
       if (b.gap) {
-        // the side street: its far end, a lamp, a parked van
-        R(b.x, 0, b.w, 0.3, dim('#4a4844'));
-        R(b.x + 4, 0.3, b.w - 8, 4.2, dim(cy ? '#141220' : '#7a7068'));
-        if (night) R(b.x + b.w / 2, 3.2, 0.2, 0.2, '#ffd890');
+        // the passage: the backs of houses beyond, in shadow, a lit back window at night
+        R(x0, x1, -1, 6, night ? BLACK : cy ? '#141220' : '#4a4642');
+        if (night && s.hour > 17 && s.hour < 23.5) P1((x0 + x1) / 2 - 2, 3.6, 2, 2, '#e8b060');
         continue;
       }
       const k = cy ? Object.assign({ hours: [0, 24] }, b.kind === 'pub' ? CYBER.pub : b.kind === 'chippy' ? CYBER.chippy : b.cyberStyle) : KINDS[b.kind];
       const open = isOpen(k, s.hour);
-      const wallC = cy ? '#1e1a28' : b.brick;
-      // the building, chimney stacks and all
-      for (let x = b.x; x < b.x + b.w; x++) {
-        const hh = B.oppositeSkyline(x);
-        R(x, 0, 1, hh, dim(wallC));
-      }
-      R(b.x, b.h - 0.25, b.w, 0.25, dim(cy ? '#2c303b' : '#d8d0c0')); // coping
-      // flats above: sash windows, a few lit in the evening
+      const lit = open && (night || P.e < 8);
+      // the building, chimneys and all (night: black but for what's lit)
+      const wallC = night ? BLACK : cy ? '#1e1a28' : b.brick;
+      for (let x = x0; x < x1; x += 2) R(x, x + 2, 0, B.oppositeSkyline(x), wallC);
+      // flats above: sash windows, some lit after dark
       const nW = Math.max(1, Math.floor(b.w / (2.3 * PX)));
       const pitch = b.w / nW;
       for (let f = 0; f < (b.h > 9 ? 2 : 1); f++) {
-        const y0 = 4.2 + f * 2.4;
+        const h0 = 4.2 + f * 2.4;
         for (let i = 0; i < nW; i++) {
-          const wx = b.x + i * pitch + pitch / 2 - 0.45 * PX;
+          const wx = x0 + i * pitch + pitch / 2 - 0.45 * PX;
           const litUp = night && b.flats[(f * nW + i) % 12] < 0.45 && s.hour > 17 && s.hour < 23.5;
-          R(wx - 2, y0 - 0.15, 0.9 * PX + 4, 0.15, dim(cy ? '#2c303b' : '#e8e0d0')); // sill
-          R(wx, y0, 0.9 * PX, 1.4, litUp ? (cy ? '#b0a0ff' : '#f0c070') : dim(cy ? '#141826' : '#3a4250'));
-          if (!cy) R(wx, y0 + 0.68, 0.9 * PX, 0.05, dim('#e8e0d0')); // the sash bar
+          if (night && !litUp) continue;
+          R(wx, wx + 0.9 * PX, h0, h0 + 1.4, litUp ? (cy ? '#b0a0ff' : '#f0c070') : cy ? '#141826' : '#3a4250');
         }
       }
-      // the shopfront: fascia, window, door, stall-riser
-      const doorX = b.door ? b.x + b.w - 1.4 * PX : b.x + 0.4 * PX;
-      const winX = b.door ? b.x + 0.4 * PX : b.x + 1.6 * PX;
-      const winW = b.w - 2 * PX;
-      R(b.x, 0, b.w, 3.4, dim(k.front));
-      const lit = open && (night || P.e < 8);
-      R(winX, 0.55, winW, 1.95, lit ? k.lit : dim(cy ? '#101420' : '#4a5260'));
-      if (!cy) for (let i = 1; i < 3; i++) R(winX + (winW * i) / 3, 0.55, 2, 1.95, dim(k.front)); // glazing bars
-      R(doorX, 0, 1.0 * PX, 2.3, lit ? B.mix(k.lit, '#000', 0.25) : dim(cy ? '#0c0c14' : '#2a2a30'));
-      R(b.x, 2.7, b.w, 0.6, dim(k.fascia));
-      // the sign: a row of letters (only blocks at this distance) in the sign colour
-      const sc = cy ? k.neon : k.sign;
-      const glowSign = cy || (night && open);
-      for (let i = 0; i < Math.floor((b.w - 0.8 * PX) / 6); i++) if ((i * 7 + b.x) % 5 !== 0) R(b.x + 0.4 * PX + i * 6, 2.85, 4, 0.3, glowSign ? sc : dim(sc));
-      if (k.awning) {
-        const [a1, a2] = k.awning;
-        for (let x = 0; x < winW + 0.8 * PX; x += 6) R(winX - 0.4 * PX + x, 2.25, 3, 0.4, dim(a1)), R(winX - 0.4 * PX + x + 3, 2.25, 3, 0.4, dim(a2));
+      // the shopfront: a 1 px gap of brick either side keeps neighbours apart
+      const s0 = x0 + 0.5 * PX;
+      const s1 = x1 - 0.5 * PX;
+      if (!night) R(s0, s1, 0, 2.6, cy ? '#141018' : k.front);
+      // the window, lit in opening hours
+      const doorL = !b.door;
+      const wx0 = doorL ? s0 + 1.2 * PX : s0;
+      const wx1 = doorL ? s1 : s1 - 1.2 * PX;
+      if (lit || !night) R(wx0, wx1, 0.5, 2.4, lit ? k.lit : cy ? '#101420' : '#3a4250');
+      if (lit || !night) R(doorL ? s0 + 0.2 * PX : s1 - 1.0 * PX, doorL ? s0 + 1.0 * PX : s1 - 0.2 * PX, 0, 2.2, lit ? B.mix(k.lit, '#000', 0.3) : '#2a2a30');
+      // the fascia: one saturated hue, 2 px; lit (or neon) after dark when open
+      const fy = Math.round(gy(3.1));
+      const fa = Math.round(gx(s0));
+      const fb = Math.round(gx(s1));
+      if (!night || open || cy) {
+        g.fillStyle = night && !cy ? B.mix(k.fascia, '#000', 0.4) : k.fascia;
+        g.fillRect(fa, fy, fb - fa, 2);
+        g.fillStyle = cy ? k.neon : k.sign;
+        if (!night || open || cy) for (let x = fa + 2; x < fb - 2; x += 3) if ((x * 7 + b.x) % 5) g.fillRect(x, fy + (cy ? 0 : 1), 1, 1); // the lettering
       }
-      if (k.crates && open) for (let i = 0; i < 4; i++) R(winX + i * 0.9 * PX, 0, 0.7 * PX, 0.55, dim(['#e04a2a', '#f0c030', '#5ab03a', '#e88a2a'][i]));
-      if (k.pole) for (let i = 0; i < 6; i++) R(doorX + 1.05 * PX, 1.4 + i * 0.15, 0.12 * PX + 1, 0.15, i % 2 ? '#ffffff' : '#d02020');
-      if (k.boards && open) R(doorX - 0.6 * PX, 0, 0.45 * PX, 0.9, dim('#f0f0e8'));
-      if (k.tiles) for (let x = b.x; x < b.x + b.w; x += 4) R(x, 0.05, 2, 0.45, dim('#ffffff'));
-      if (cy) R(b.x + 1, 2.68, b.w - 2, 0.05, k.neon); // an LED strip along the fascia
+      if (cy) continue;
+      // one signature each
+      const mid = Math.round(gx((s0 + s1) / 2));
+      const groundY = Math.round(gy(0));
+      if (b.kind === 'pub') {
+        g.fillStyle = dim('#5a1a1a');
+        g.fillRect(fa, fy + 2, fb - fa, 1); // oxblood under the green
+        g.fillStyle = night ? '#e0a050' : '#d8b048';
+        g.fillRect(fb - 1, fy - 4, 2, 3); // the hanging sign
+      } else if (b.kind === 'chippy' && !night) {
+        g.fillStyle = '#f4f4f0';
+        g.fillRect(Math.round(gx(wx0)), Math.round(gy(0.45)), Math.round(gx(wx1)) - Math.round(gx(wx0)), 2); // white tiles
+      } else if (k.awning) {
+        const ay = Math.round(gy(2.55));
+        for (let x = Math.round(gx(wx0)) - 1; x < Math.round(gx(wx1)) + 1; x++) {
+          g.fillStyle = dim(k.awning[x & 1]);
+          g.fillRect(x, ay, 1, 3);
+        }
+      } else if (k.pole) {
+        for (let i = 0; i < 5; i++) {
+          g.fillStyle = i % 2 ? '#f0f0f0' : '#d02020';
+          g.fillRect(Math.round(gx(doorL ? s0 + 1.1 * PX : s1 - 1.1 * PX)), Math.round(gy(1.9)) + i, 1, 1);
+        }
+      } else if (b.kind === 'launderette') {
+        g.fillStyle = night ? (open ? '#ffffff' : BLACK) : '#e8f0f0';
+        for (let x = Math.round(gx(wx0)) + 1; x < Math.round(gx(wx1)) - 1; x += 3) g.fillRect(x, Math.round(gy(1.0)), 2, 2);
+      } else if (b.kind === 'news' && open && !night) {
+        g.fillStyle = '#f0f0e8';
+        g.fillRect(Math.round(gx(doorL ? s0 - 0.6 * PX : s1 + 0.2 * PX)), groundY - 3, 2, 3);
+      } else if (b.kind === 'bookie') {
+        g.fillStyle = dim('#c02020');
+        g.fillRect(fa, fy + 2, fb - fa, 1);
+      }
+      if (b.kind === 'grocer' && open && !night) {
+        const c = ['#e04a2a', '#f0c030', '#5ab03a', '#e88a2a'];
+        for (let x = Math.round(gx(wx0)); x < Math.round(gx(wx1)); x++) {
+          g.fillStyle = c[x % 4];
+          g.fillRect(x, groundY - 2, 1, 1);
+        }
+      }
+      void mid;
     }
-    // daylight on it: the terrace faces ENE, so it is sunlit in the morning and in shade after
-    if (!night) {
+    // the light on it by day: sunlit in the morning (it faces ENE), shade after
+    if (tint) {
       g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = P.morning && P.e > 0 ? (cy ? 'rgba(255,190,140,0.18)' : 'rgba(255,200,140,0.22)') : 'rgba(60,70,110,0.18)';
-      g.fillRect(0, 0, FW, FH);
+      g.fillStyle = tint;
+      g.fillRect(0, 0, 320, 180);
       g.globalCompositeOperation = 'source-over';
     }
-    return fc;
+    // the reflected kerb: a 1 px line the terrace and the walkers stand on
+    g.fillStyle = night ? (cy ? '#1a1828' : '#2a2620') : cy ? '#3a3648' : '#b8b0a4';
+    g.fillRect(0, Math.round(gy(0)), 320, 1);
+    g.fillStyle = night ? BLACK : cy ? '#24222c' : '#5a5650';
+    g.fillRect(0, Math.round(gy(0)) + 1, 320, 180);
+    return true;
   }
 
   // ---------- people across the road ----------
@@ -214,30 +255,38 @@
     const shade = (c) => B.mix(c, cyber() ? '#06050c' : '#121018', 0.75 * night);
     const t = performance.now() / 1000;
     const rain = (s.weather && s.weather.rain) || 0;
-    // the far pavement is ~20.5 m beyond the glass
+    // the far pavement is ~20.5 m beyond the glass: dark figures against the shopfronts, one colour each, and after
+    // dark only a rim where a lit window is behind them
+    const sil = cyber() ? '#141220' : '#2a2630';
     for (const w of walkers) {
-      const [gx, gy, m] = toGlass(w.x, 0, 20.5);
-      const u = PX * m; // px per metre in the glass
+      const [gx0, gy0, m] = toGlass(w.x, 0, 20.5);
+      const u = PX * m;
       const ht = Math.round(1.7 * w.tall * u);
-      const x = Math.round(gx);
-      const y = Math.round(gy);
+      const x = Math.round(gx0);
+      const y = Math.round(gy0);
       const stride = Math.sin(t * 7 + w.ph) > 0;
-      g.fillStyle = shade(w.bottom);
-      g.fillRect(x - 1 + (stride ? 1 : 0), y - Math.round(ht * 0.45), 1, Math.round(ht * 0.45));
-      g.fillRect(x + (stride ? -1 : 1), y - Math.round(ht * 0.45), 1, Math.round(ht * 0.45));
-      g.fillStyle = shade(w.top);
+      const legH = Math.round(ht * 0.45);
+      if (night > 0.6) {
+        g.fillStyle = '#000';
+      } else g.fillStyle = sil;
+      g.fillRect(x - 1 + (stride ? 1 : 0), y - legH, 1, legH);
+      g.fillRect(x + (stride ? -1 : 1), y - legH, 1, legH);
       g.fillRect(x - 1, y - Math.round(ht * 0.85), 3, Math.round(ht * 0.42));
-      g.fillStyle = shade(w.skin);
-      g.fillRect(x, y - ht, 2, 2);
-      g.fillStyle = shade(w.hair);
-      g.fillRect(x, y - ht, 2, 1);
+      g.fillRect(x, y - ht, 2, Math.round(ht * 0.16));
+      if (night < 0.6) {
+        g.fillStyle = shade(w.top); // the one colour that reads: a coat
+        g.fillRect(x, y - Math.round(ht * 0.8), 2, Math.round(ht * 0.3));
+      } else {
+        g.fillStyle = 'rgba(255,200,120,0.6)'; // backlit by the shop windows
+        g.fillRect(x + 2, y - ht + 1, 1, Math.round(ht * 0.6));
+      }
       if (rain > 0.3) {
-        g.fillStyle = shade(w.brolly);
-        g.fillRect(x - 2, y - ht - 2, 6, 1);
-        g.fillRect(x - 1, y - ht - 3, 4, 1);
+        g.fillStyle = night > 0.6 ? '#000' : shade(w.brolly);
+        g.fillRect(x - 2, y - ht - 1, 5, 1);
+        g.fillRect(x - 1, y - ht - 2, 3, 1);
       }
       if (w.dog) {
-        g.fillStyle = shade('#5a3a20');
+        g.fillStyle = night > 0.6 ? '#000' : sil;
         g.fillRect(x + w.dir * 4, y - 2, 3, 1);
         g.fillRect(x + w.dir * 4, y - 1, 1, 1);
         g.fillRect(x + w.dir * 4 + 2, y - 1, 1, 1);
@@ -249,7 +298,7 @@
       const k = ev.t / ev.dur;
       const xc = ev.dir > 0 ? -70 + k * 460 : 390 - k * 460;
       const dv = (ev.dir > 0 ? 55 : 85) / PX;
-      const [cx, y0, m] = toGlass(xc, 0, dv);
+      const [cx, , m] = toGlass(xc, 0, dv);
       const u = PX * m;
       const bus = ev.kind === 'bus';
       const bike = ev.kind === 'bike';
@@ -259,62 +308,78 @@
       const x0 = Math.round(cx - (len * u) / 2);
       const wpx = Math.round(len * u);
       const Y = (h) => Math.round(toGlass(xc, h, dv)[1]);
-      const pal = ['#a02a2a', '#2a4a8a', '#d8d8d8', '#2a2a2e', '#6a6a70', '#3a6a4a', '#c8a040'];
-      const body = shade(bus ? (cyber() ? '#3a2a6a' : '#c8202a') : em ? '#f0f0e8' : pal[Math.floor(ev.seed * pal.length)]);
       const front = ev.dir > 0 ? x0 + wpx : x0;
-      if (bike) {
-        g.fillStyle = shade('#2a2a2a');
-        g.fillRect(x0, Y(0.35), wpx, 1);
-        g.fillStyle = shade(B.pick ? '#4a6a8a' : '#4a6a8a');
-        g.fillRect(Math.round(cx) - 1, Y(1.7), 3, Y(0.9) - Y(1.7));
-        continue;
-      }
-      g.fillStyle = body;
-      if (bus) {
-        g.fillRect(x0, Y(hgt), wpx, Y(0.35) - Y(hgt));
-        g.fillStyle = night > 0.5 ? '#f0d890' : shade('#3a4250'); // the windows, lit inside after dark
-        for (let i = 0; i < 6; i++) g.fillRect(x0 + 3 + Math.round((i * (wpx - 6)) / 6), Y(2.7), Math.round((wpx - 6) / 6) - 2, Y(1.6) - Y(2.7));
-      } else {
-        g.fillRect(x0, Y(0.95), wpx, Y(0.3) - Y(0.95)); // the body
-        const c0 = x0 + Math.round(wpx * (ev.dir > 0 ? 0.18 : 0.3));
-        const c1 = x0 + Math.round(wpx * (ev.dir > 0 ? 0.7 : 0.82));
-        g.fillRect(c0, Y(hgt), c1 - c0, Y(0.95) - Y(hgt)); // the cabin
-        g.fillStyle = shade('#3a4452');
-        g.fillRect(c0 + 2, Y(hgt - 0.08), c1 - c0 - 4, Y(1.0) - Y(hgt - 0.08)); // its windows
-        g.fillStyle = body;
-        g.fillRect(Math.round((c0 + c1) / 2), Y(hgt), 1, Y(0.95) - Y(hgt)); // B-pillar
-        if (em && Math.floor(t * 6) % 2) {
-          g.fillStyle = '#3a6aff';
-          g.fillRect(Math.round((c0 + c1) / 2) - 3, Y(hgt) - 2, 6, 2);
+      const lampA = 0.5 + 0.5 * night;
+      if (night < 0.6) {
+        const pal = ['#a02a2a', '#2a4a8a', '#c8c8c8', '#2a2a2e', '#6a6a70', '#3a6a4a', '#c8a040'];
+        const body = shade(bus ? (cyber() ? '#3a2a6a' : '#b8202a') : em ? '#f0f0e8' : pal[Math.floor(ev.seed * pal.length)]);
+        if (bike) {
+          g.fillStyle = sil;
+          g.fillRect(x0, Y(0.35), wpx, 1);
+          g.fillRect(Math.round(cx) - 1, Y(1.7), 3, Y(0.9) - Y(1.7));
+          continue;
         }
+        g.fillStyle = body;
+        if (bus) {
+          g.fillRect(x0, Y(hgt), wpx, Y(0.35) - Y(hgt));
+          // a dark window band with a pillar every 6 px, the destination blind, a black skirt
+          g.fillStyle = '#1a1c24';
+          g.fillRect(x0 + 2, Y(2.75), wpx - 4, Y(1.75) - Y(2.75));
+          g.fillStyle = body;
+          for (let x = x0 + 6; x < x0 + wpx - 3; x += 6) g.fillRect(x, Y(2.75), 1, Y(1.75) - Y(2.75));
+          g.fillStyle = '#f0b030';
+          g.fillRect(ev.dir > 0 ? x0 + wpx - 12 : x0 + 3, Y(2.95), 9, 1);
+          g.fillStyle = '#121216';
+          g.fillRect(x0, Y(0.5), wpx, Y(0) - Y(0.5) + 1);
+        } else {
+          g.fillRect(x0, Y(0.95), wpx, Y(0.3) - Y(0.95));
+          const c0 = x0 + Math.round(wpx * (ev.dir > 0 ? 0.18 : 0.3));
+          const c1 = x0 + Math.round(wpx * (ev.dir > 0 ? 0.7 : 0.82));
+          g.fillRect(c0, Y(hgt), c1 - c0, Y(0.95) - Y(hgt));
+          g.fillStyle = '#20242c';
+          g.fillRect(c0 + 2, Y(hgt - 0.08), c1 - c0 - 4, Y(1.0) - Y(hgt - 0.08));
+          g.fillStyle = body;
+          g.fillRect(Math.round((c0 + c1) / 2), Y(hgt), 1, Y(0.95) - Y(hgt));
+          g.fillStyle = '#121216';
+          for (const f of [0.18, 0.8]) g.fillRect(x0 + Math.round(wpx * f) - 3, Y(0.32), 6, Y(0) - Y(0.32) + 1);
+        }
+      } else if (bus) {
+        // after dark a bus is its lit lower deck and upper windows
+        g.fillStyle = cyber() ? '#c8b0ff' : '#f0d890';
+        for (let x = x0 + 3; x < x0 + wpx - 4; x += 6) {
+          g.fillRect(x, Y(2.75), 5, Y(1.75) - Y(2.75));
+          g.fillRect(x, Y(1.5), 5, Y(0.9) - Y(1.5));
+        }
+        g.fillStyle = '#f0b030';
+        g.fillRect(ev.dir > 0 ? x0 + wpx - 12 : x0 + 3, Y(2.95), 9, 1);
       }
-      g.fillStyle = '#141418';
-      for (const f of [0.18, 0.8]) g.fillRect(x0 + Math.round(wpx * f) - 3, Y(0.32), 6, Y(0) - Y(0.32) + 1); // wheels
-      // lamps: headlights at the front, tail-lights behind, brightest after dark
-      const la = 0.4 + 0.6 * night;
-      g.globalAlpha = la;
-      g.fillStyle = cyber() ? '#c8f4ff' : '#fff0c8';
-      g.fillRect(front - (ev.dir > 0 ? 3 : 0), Y(0.8), 3, 2);
-      g.fillStyle = '#ff3020';
-      g.fillRect(ev.dir > 0 ? x0 : x0 + wpx - 2, Y(0.85), 2, 2);
+      if (em && Math.floor(t * 6) % 2) {
+        g.fillStyle = '#3a6aff';
+        g.fillRect(Math.round(cx) - 3, Y(hgt) - 2, 6, 2);
+      }
+      // the lamps: two headlamps at the front, tail-lights behind
+      g.globalAlpha = lampA;
+      g.fillStyle = cyber() ? '#c8f4ff' : '#fff4d8';
+      const hx = ev.dir > 0 ? front - 2 : front;
+      g.fillRect(hx, Y(0.75), 2, 2);
+      if (!bike) g.fillRect(hx + (ev.dir > 0 ? -5 : 5), Y(0.75), 2, 2);
+      g.fillStyle = '#ff2a18';
+      const tx = ev.dir > 0 ? x0 : x0 + wpx - 2;
+      g.fillRect(tx, Y(0.85), 2, 2);
+      if (!bike) g.fillRect(tx + (ev.dir > 0 ? 5 : -5), Y(0.85), 2, 2);
       g.globalAlpha = 1;
     }
   }
 
-  /** The static reflection: the facade through the mirror, into the given panes. */
+  /** The static reflection: the terrace through the mirror, into the given panes. */
   function paintFacade(g, s, panes) {
-    const img = facade(s);
-    if (!img) return false;
     g.save();
     g.beginPath();
     for (const p of panes) g.rect(p.x, p.y, p.w, p.h);
     g.clip();
-    const [dx, dy] = toGlass(X0, 14, 22);
-    g.imageSmoothingEnabled = false; // kept on the pixel grid: the shops' shapes are drawn big enough to survive the 2.6x reduction
-    g.drawImage(img, dx, dy, FW / MAG, FH / MAG);
-    g.imageSmoothingEnabled = false;
+    const ok = paintTerrace(g, s);
     g.restore();
-    return true;
+    return ok;
   }
 
   B.oppositeStreet = { paintFacade, paintLife, layout, walkers };

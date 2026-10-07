@@ -76,6 +76,13 @@ The golden sheets in `tools/lighting-reel/golden/` are the reference frames. `to
 - **Dawn:** the front is in its own shadow, cool, with a rim of sun on the cornice and the alley's end glowing.
 - **Neon by day:** the smog follows the sun: cool and backlit in the morning, white and flat at noon, a heavy amber band low on the front in the afternoon.
 - **Cloud shadows** cross at about 120 px/s with a ~300 px soft edge.
+- **The street behind you, in the glass:** the terrace opposite (each building its own shop, authored at the size it appears in the glass, one signature each), walkers on its pavement and the passing traffic, through a plane mirror: an eye 1.6 m up and 14 m out, the facade 22 m beyond the glass (a 2.57x reduction, no left-right flip). The shop window sees the ground floors and the road; the upstairs panes see sky. A reflection adds light: it shows in the room's darks and vanishes against its bright surfaces. After dark only emitters reflect: lit windows, signs, lamps, a bus's lit decks.
+
+## Deliberate conventions
+
+- **The view is an elevation.** The pavement is foreshortened as if seen from about 4 m up, but mirrors and sight lines use an eye 1.6 m up and 14 m out. Don't "correct" one without the other.
+- **Traffic lanes** sit 2.4 m and 3.7 m from our wall (a physical street would put them at 5-7 m and 13-15 m), for visual punch: bigger reflections, and car shadows that reach the wall up to ~30 deg of sun.
+- **The pub and chippy prints** come from sources 7.8 m out; their mirror images are at 22 m. The near distance is a deliberate gain (the locked night look).
 
 ## The Lighting Lab
 
