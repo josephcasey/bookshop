@@ -115,14 +115,37 @@
       const show = () => (outEl.textContent = Math.round(B.audio.levels[which] * 100));
       input.value = B.audio.levels[which];
       show();
+      // turning it up means you want to hear it: switch on from the touch itself (iOS only unlocks audio in a gesture)
+      const wantSound = () => !B.audio.enabled && soundBtn.click();
+      input.addEventListener('pointerdown', wantSound);
+      input.addEventListener('touchstart', wantSound, { passive: true });
       input.addEventListener('input', () => {
-        if (!B.audio.enabled) soundBtn.click(); // turning it up means you want to hear it
+        if (!B.audio.enabled) soundBtn.click();
         B.audio.setLevel(which, +input.value);
         show();
       });
     };
     bindVol('music', $('#volMusic'), $('#volMusicOut'));
     bindVol('fx', $('#volFx'), $('#volFxOut'));
+    // ?audiodebug: a live readout in the volume panel (audio state and the level on each bus), to check a phone
+    if (/audiodebug/.test(location.search)) {
+      const pre = document.createElement('pre');
+      pre.className = 'hint';
+      pre.style.cssText = 'font-size:11px;white-space:pre-wrap;margin:6px 0 0';
+      $('#volpanel').appendChild(pre);
+      $('#volpanel').classList.remove('hidden');
+      const db = (v) => (v > 1e-6 ? (20 * Math.log10(v)).toFixed(0) + ' dB' : 'silent');
+      setInterval(() => {
+        const A = B.audio;
+        pre.textContent = [
+          `sound ${A.enabled ? 'on' : 'off'} · context ${A.on() ? 'running' : 'not running'}`,
+          `session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'}`,
+          `music ${Math.round(A.levels.music * 100)}% → bus ${A.rms ? db(A.rms('music')) : '-'}`,
+          `fx ${Math.round(A.levels.fx * 100)}% → bus ${A.rms ? db(A.rms('fx')) : '-'}`,
+          `stream ${A.streamStatus || '-'}${A.streamDirect && A.streamDirect() ? ' (direct: slider mutes only)' : ''} · ${A.rms ? db(A.rms('stream')) : '-'}`,
+        ].join('\n');
+      }, 250);
+    }
     $('#volBtn').addEventListener('click', () => volpanel.classList.toggle('hidden'));
     volpanel.querySelector('.close').addEventListener('click', () => volpanel.classList.add('hidden'));
 

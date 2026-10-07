@@ -47,6 +47,11 @@
     fxStreetG.connect(out);
     musicG = ctx.createGain();
     musicG.connect(glass);
+    A.meters = { music: ctx.createAnalyser(), fx: ctx.createAnalyser(), stream: ctx.createAnalyser() };
+    for (const m of Object.values(A.meters)) m.fftSize = 512;
+    musicG.connect(A.meters.music);
+    fxShopG.connect(A.meters.fx);
+    fxStreetG.connect(A.meters.fx);
     tvIn = ctx.createGain();
     tvLp = ctx.createBiquadFilter();
     tvLp.type = 'lowpass';
@@ -439,6 +444,7 @@
   A.setLevel = (which, v) => {
     A.levels[which] = Math.max(0, Math.min(1, v));
     applyLevels();
+    applyDirect();
     try {
       localStorage.setItem(LEVELS_KEY, JSON.stringify(A.levels));
     } catch (e) {
@@ -446,11 +452,36 @@
     }
   };
   A.enable = () => {
+    try {
+      // iOS Safari 16.4+: play like a media app, so the ringer's silent switch doesn't mute the shop
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    } catch (e) {
+      /* older Safari */
+    }
     if (!ctx && !init()) return;
     ctx.resume();
+    // iOS unlocks audio only from inside a tap: start a 1-sample silent buffer right now
+    try {
+      const b = ctx.createBufferSource();
+      b.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      b.connect(ctx.destination);
+      b.start(0);
+    } catch (e) {
+      /* ignore */
+    }
     A.enabled = true;
     syncStream();
   };
+  // iOS suspends ('interrupted') the context when the phone locks or another app takes the audio; pick it up again on
+  // the next touch, or when the page comes back
+  const wake = () => {
+    if (!A.enabled || !ctx || ctx.state === 'running') return;
+    ctx.resume().then(() => syncStream()).catch(() => {});
+  };
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && wake());
+    for (const ev of ['touchend', 'pointerdown', 'keydown']) document.addEventListener(ev, wake, { passive: true });
+  }
   A.disable = () => {
     A.enabled = false;
     if (ctx) ctx.suspend();
@@ -486,6 +517,22 @@
   /** Start, switch or stop the live stream to match the current station and sound setting. */
   function syncStream() {
     const url = A.enabled && ctx && radioSt && radioSt.stream;
+    if (direct) {
+      // already playing streams directly (this browser can't route them): just follow the station
+      if (!url) {
+        direct.pause();
+        direct.removeAttribute('src');
+        setStreamStatus(null);
+      } else {
+        if (direct.getAttribute('src') !== url) {
+          direct.src = url;
+          setStreamStatus('tuning');
+        }
+        direct.play().catch(() => setStreamStatus('error'));
+        applyDirect();
+      }
+      return;
+    }
     if (!url) {
       if (streamEl && streamEl.getAttribute('src')) {
         streamEl.pause();
@@ -503,8 +550,13 @@
       g.gain.value = radioSt.gain || 1.6;
       ctx.createMediaElementSource(streamEl).connect(g);
       g.connect(radioIn);
+      g.connect(A.meters.stream);
       streamEl._gain = g;
-      streamEl.addEventListener('playing', () => ((streamRetry = 0), setStreamStatus('playing')));
+      streamEl.addEventListener('playing', () => {
+        streamRetry = 0;
+        setStreamStatus('playing');
+        checkRouted();
+      });
       streamEl.addEventListener('waiting', () => setStreamStatus('tuning'));
       streamEl.addEventListener('error', () => {
         if (!streamEl.getAttribute('src')) return;
@@ -524,6 +576,40 @@
       setStreamStatus('error');
     });
   }
+  // ---------- is the stream reaching Web Audio? ----------
+  const rms = (an) => {
+    if (!an) return 0;
+    const d = new Float32Array(an.fftSize);
+    an.getFloatTimeDomainData(d);
+    let sum = 0;
+    for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+    return Math.sqrt(sum / d.length);
+  };
+  A.rms = (which) => rms(A.meters && A.meters[which]);
+  let direct = null; // the fallback: an unrouted element
+  function checkRouted() {
+    if (direct) return;
+    setTimeout(() => {
+      if (!streamEl || streamEl.paused || A.streamStatus !== 'playing') return;
+      if (rms(A.meters.stream) > 1e-5) return; // coming through: the music slider controls it
+      // silence through Web Audio while the element says it's playing: play it directly instead
+      console.warn('[bookshop] stream silent through Web Audio; playing it directly');
+      direct = new Audio();
+      direct.src = streamEl.src;
+      streamEl.pause();
+      streamEl.removeAttribute('src');
+      direct.addEventListener('playing', () => setStreamStatus('playing'));
+      direct.play().catch(() => setStreamStatus('error'));
+      applyDirect();
+    }, 3000);
+  }
+  function applyDirect() {
+    if (!direct) return;
+    direct.volume = Math.min(1, levelGain(A.levels.music) / 1.5); // ignored on iOS...
+    direct.muted = A.levels.music < 0.02 || !A.enabled; // ...but muting works everywhere
+  }
+  A.streamDirect = () => !!direct;
+
   A.update = (s) => {
     if (!ctx || !A.enabled) return;
     const t = ctx.currentTime;
