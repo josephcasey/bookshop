@@ -804,7 +804,7 @@
         col: sun.col,
         a: Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110)),
         colGain: B.mix(sun.col, '#ffe8cc', 0.55),
-        gain: Math.min(1.2, 1.8 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain)
+        gain: Math.min(1.5, 2.3 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain); lifted ~30% so the blade holds against the glass
         motes: true,
       };
       const room = Object.assign({}, kit.SHOP, { aperture: () => strips });
