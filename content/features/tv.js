@@ -108,7 +108,7 @@
   B.on('tick', (s) => {
     const U2 = s.upstairs;
     const now = performance.now() / 1000;
-    const dt = lastReal ? Math.min(0.25, now - lastReal) : 0; // real time: episodes don't race at 10x
+    const dt = lastReal ? Math.max(0, Math.min(0.25, now - lastReal)) : 0; // real time: episodes don't race at 10x
     lastReal = now;
     if (!U2.tv) return;
     const sh = tv.show(s);

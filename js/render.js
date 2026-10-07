@@ -1274,7 +1274,8 @@
     part('shopSpill')(g, s, day, lit);
     decor(g, s, 'overlay');
     const post = part('post');
-    if (post) post(g, s, day);
+    if (post && !(B.lightFlags && B.lightFlags.grade === false)) post(g, s, day);
+    if (B.finalPass) B.finalPass(g, s, day); // e.g. the locked palette (Lighting Lab)
 
     // ----- speech bubbles on top of everything -----
     for (const a of s.npcs.concat(o.area === 'away' ? [] : [o])) {

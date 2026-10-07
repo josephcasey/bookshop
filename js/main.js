@@ -58,7 +58,8 @@
       if (B.holdFrame) return; // dev tools (the lighting reel) can take over the canvas
       try {
         if (!s.paused) B.tick(s, dt);
-        B.render(g, s);
+        if (B.renderOverride) B.renderOverride(g, s);
+        else B.render(g, s);
         hudTick(s);
       } catch (e) {
         if (now - lastErr > 5000) console.error('[bookshop] frame error', e);

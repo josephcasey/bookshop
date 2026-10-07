@@ -276,6 +276,58 @@ body.idle #timepanel {
   opacity: 1;
 }
 
+/* ----- the lighting lab ----- */
+.labpanel {
+  width: min(400px, calc(100vw - 32px));
+}
+#labList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+#labList li {
+  margin: 0 0 6px;
+}
+#labList label {
+  cursor: pointer;
+}
+#labList b {
+  font-weight: normal;
+  color: var(--ink, #f4efe2);
+}
+#labList .cmp {
+  float: right;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+#labList .hint {
+  margin: 1px 0 0 20px;
+}
+#labResults table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+#labResults td,
+#labResults th {
+  text-align: left;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--line);
+  font-weight: normal;
+}
+#labResults th {
+  color: var(--accent);
+}
+#labResults .offrow {
+  color: var(--muted);
+}
+#labResults .bar {
+  display: inline-block;
+  height: 6px;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
 /* ----- volume ----- */
 .volpanel {
   position: fixed;

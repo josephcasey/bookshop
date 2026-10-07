@@ -579,7 +579,7 @@
     const name = B.config.shopName;
     const x0 = Math.round(137 - B.textWidth(name, 3) / 2);
     const k = (day > 0.6 ? 0.85 : 1) * (1 - 0.3 * fog);
-    if (open || day < 0.6) {
+    if (open || day < 0.9) { // the neon comes on as dusk falls
       g.globalAlpha = k;
       // letter by letter, so one tube can misbehave
       let x = x0;

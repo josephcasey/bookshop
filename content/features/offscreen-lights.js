@@ -25,6 +25,27 @@
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
   };
   const cyber = () => B.theme === 'cyber';
+  // Every approach can be switched off to see what it brings (the Lighting Lab menu toggles these)
+  const F = (B.lightFlags = B.lightFlags || {}); // one shared object: the Lighting Lab toggles it
+  const DEFAULTS = (
+    {
+      headlights: true, // traffic light sources
+      steadyLights: true, // the pub, chippy, signs and street lamp
+      reveal: true, // light reveals surface colour (off: plain additive light)
+      bands: true, // light quantised to a few levels on the pixel grid
+      projection: true, // light thrown through the windows into the rooms
+      propShadows: true, // props and people cast shadows inside
+      quietShadows: true, // texture quietened inside shadows
+      facadeShadows: true, // people and the lamp post cast shadows up the shopfront
+      exposure: true, // eye adaptation to bright beams
+      actorLight: true, // people lit by the light where they stand
+      mirror: true, // the dark glass reflects the street
+      glints: true, // headlamp glints and kerb highlights
+      rain: true, // wet reflections
+      fog: true, // beams visible in fog
+    }
+  );
+  for (const k in DEFAULTS) if (F[k] === undefined) F[k] = DEFAULTS[k];
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const now = () => performance.now() / 1000;
 
@@ -103,17 +124,21 @@
   });
   B.on('jump', () => (events.length = 0));
   B.trafficEvents = events; // for tests and the console
+  B.lightKit = {}; // filled in below: projection, rooms and helpers shared with the sunlight
 
   // ---------- canvases ----------
   const mk = () => {
     const c = document.createElement('canvas');
     c.width = W;
     c.height = H;
-    const g = c.getContext('2d', { willReadFrequently: true });
+    const g = c.getContext('2d', { willReadFrequently: true }); // CPU-backed, like the main canvas (mixing the two costs transfers)
     return [c, g];
   };
   let lm, lg, vc, vg, sc, sg2, rc, rg, pc, pg, qc, qg, ac, ag, bc, bgx, fc, fgx, hc, hgx, tc, tgx;
   let mainCanvas = null;
+  let quietT = -1;
+  let quietFrame = -1;
+  let frameNo = 0;
   let darkNow = 1;
   const ensure = () => {
     if (lm) return !!lg;
@@ -141,39 +166,139 @@
    *  falloff), which is where a pixel artist would dither between two tones. */
   let qa = null;
   let lmAlpha = null; // the outside light map before banding: how lit each spot is
-  function quantise(g, levels = 4, cap = 0.66, cel = false) {
+  // Hard cel bands without reading pixels back (which forces all the deferred drawing to happen there and then):
+  // an SVG filter posterises alpha on the way through. Checked once; if the browser can't, quantise() reads back.
+  let celFilterOk = null;
+  const celId = (levels, cap) => `bk-cel-${levels}-${Math.round(cap * 100)}`;
+  function ensureCelFilter(levels, cap) {
+    const id = celId(levels, cap);
+    if (document.getElementById(id)) return id;
+    let svg = document.getElementById('bk-filters');
+    if (!svg) {
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'bk-filters';
+      svg.setAttribute('width', '0');
+      svg.setAttribute('height', '0');
+      svg.style.position = 'absolute';
+      document.body.appendChild(svg);
+    }
+    // 40 equal slices of input alpha, each mapped to its cel level
+    const vals = [];
+    for (let k = 0; k < 40; k++) {
+      const a = (k + 0.5) / 40;
+      vals.push(((Math.max(0, Math.min(levels, Math.floor((Math.min(a, cap) / cap) * levels + 0.5))) / levels) * cap).toFixed(4));
+    }
+    const f = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+    f.id = id;
+    f.setAttribute('color-interpolation-filters', 'sRGB');
+    f.innerHTML = `<feComponentTransfer><feFuncA type="discrete" tableValues="${vals.join(' ')}"/></feComponentTransfer>`;
+    svg.appendChild(f);
+    return id;
+  }
+  let celC = null;
+  let celG = null;
+  function celViaFilter(g, levels, cap, R) {
+    if (celFilterOk === false || typeof document === 'undefined' || !document.createElementNS) return false;
+    if (!celC) {
+      celC = document.createElement('canvas');
+      celC.width = W;
+      celC.height = H;
+      celG = celC.getContext('2d', { willReadFrequently: true });
+    }
+    if (!celG || !('filter' in celG)) {
+      celFilterOk = false;
+      return false;
+    }
+    const id = ensureCelFilter(levels, cap);
+    if (celFilterOk === null) {
+      // one-off check that the filter really bands: 30% alpha in, the nearest level out
+      celG.clearRect(0, 0, W, H);
+      celG.filter = `url(#${id})`;
+      const probe = document.createElement('canvas');
+      probe.width = probe.height = 2;
+      const pgx = probe.getContext('2d');
+      pgx.fillStyle = 'rgba(255,255,255,0.3)';
+      pgx.fillRect(0, 0, 2, 2);
+      celG.drawImage(probe, 0, 0);
+      celG.filter = 'none';
+      const a = celG.getImageData(0, 0, 1, 1).data[3] / 255;
+      const want = (Math.floor((Math.min(0.3, cap) / cap) * levels + 0.5) / levels) * cap;
+      celFilterOk = Math.abs(a - want) < 0.06;
+      celG.clearRect(0, 0, W, H);
+      if (!celFilterOk) return false;
+    }
+    const x = Math.max(0, Math.floor(R.x));
+    const y = Math.max(0, Math.floor(R.y));
+    const w = Math.min(W - x, Math.ceil(R.w) + 1);
+    const h = Math.min(H - y, Math.ceil(R.h) + 1);
+    celG.clearRect(x, y, w, h);
+    celG.filter = `url(#${id})`;
+    celG.drawImage(g.canvas, x, y, w, h, x, y, w, h);
+    celG.filter = 'none';
+    g.clearRect(x, y, w, h);
+    g.drawImage(celC, x, y, w, h, x, y, w, h);
+    return true;
+  }
+
+  function quantise(g, levels = 4, cap = 0.66, cel = false, R = null) {
+    if (cel && R && celViaFilter(g, levels, cap, R)) return;
+    // only the region that matters (a window's surface), not the whole frame: this runs many times a frame
+    const x0 = R ? clamp(Math.floor(R.x), 0, W - 1) : 0;
+    const y0 = R ? clamp(Math.floor(R.y), 0, H - 1) : 0;
+    const w = R ? clamp(Math.ceil(R.x + R.w) - x0, 1, W - x0) : W;
+    const h = R ? clamp(Math.ceil(R.y + R.h) - y0, 1, H - y0) : H;
     let img;
     try {
-      img = g.getImageData(0, 0, W, H);
+      img = g.getImageData(x0, y0, w, h);
     } catch (e) {
       return;
     }
     if (!img || !img.data) return;
     const d = img.data;
-    if (!qa) qa = new Uint8Array(W * H);
-    for (let i = 0, j = 3; i < W * H; i++, j += 4) qa[i] = d[j];
-    if (g === lg) lmAlpha = qa.slice ? qa.slice() : qa;
-    for (let y = 0, i = 0; y < H; y++) {
-      const row = (y & 3) << 2;
-      for (let x = 0; x < W; x++, i++) {
+    const n = w * h;
+    if (cel) {
+      // hard bands, no dither: no neighbours needed
+      for (let j = 3; j < d.length; j += 4) {
+        const a = d[j];
+        if (!a) continue;
+        const v = (Math.min(a / 255, cap) / cap) * levels;
+        d[j] = (Math.max(0, Math.min(levels, Math.floor(v + 0.5))) / levels) * cap * 255;
+      }
+      g.putImageData(img, x0, y0);
+      return;
+    }
+    if (!qa || qa.length < n) qa = new Uint8Array(W * H);
+    for (let i = 0, j = 3; i < n; i++, j += 4) qa[i] = d[j];
+    if (g === lg && !R) lmAlpha = qa.slice(0, n);
+    for (let y = 0, i = 0; y < h; y++) {
+      const row = ((y + y0) & 3) << 2;
+      for (let x = 0; x < w; x++, i++) {
         const a = qa[i];
         if (!a) continue;
         // g1: change over 2px (a hard edge); g7: change over 6px (a smooth ramp)
-        const gx = Math.abs((x < W - 1 ? qa[i + 1] : a) - (x > 0 ? qa[i - 1] : a));
-        const gy = Math.abs((y < H - 1 ? qa[i + W] : a) - (y > 0 ? qa[i - W] : a));
+        const gx = Math.abs((x < w - 1 ? qa[i + 1] : a) - (x > 0 ? qa[i - 1] : a));
+        const gy = Math.abs((y < h - 1 ? qa[i + w] : a) - (y > 0 ? qa[i - w] : a));
         const g7 =
-          Math.abs((x < W - 3 ? qa[i + 3] : a) - (x > 2 ? qa[i - 3] : a)) + Math.abs((y < H - 3 ? qa[i + 3 * W] : a) - (y > 2 ? qa[i - 3 * W] : a));
-        // cel: hard bands, no dither. Otherwise a plain 2x2 checker, only on wide gentle ramps (not on sharp edges,
-        // where it would draw a dotted outline)
+          Math.abs((x < w - 3 ? qa[i + 3] : a) - (x > 2 ? qa[i - 3] : a)) + Math.abs((y < h - 3 ? qa[i + 3 * w] : a) - (y > 2 ? qa[i - 3 * w] : a));
         // hard edges stay crisp, flat light stays flat; only smooth ramps get a plain 2x2 checker between bands
-        const th = cel || gx + gy >= 40 || g7 < 3 ? 0.5 : (x + y) & 1 ? 0.25 : 0.75;
+        const th = gx + gy >= 40 || g7 < 3 ? 0.5 : (x + x0 + y + y0) & 1 ? 0.25 : 0.75;
         const v = (Math.min(a / 255, cap) / cap) * levels;
         const q = Math.max(0, Math.min(levels, Math.floor(v + 1 - th))) / levels;
         d[i * 4 + 3] = q * cap * 255;
       }
     }
-    g.putImageData(img, 0, 0);
+    g.putImageData(img, x0, y0);
   }
+  const bbox = (rects) => {
+    let x1 = W, y1 = H, x2 = 0, y2 = 0;
+    for (const r of rects) {
+      x1 = Math.min(x1, r.x);
+      y1 = Math.min(y1, r.y);
+      x2 = Math.max(x2, r.x + r.w);
+      y2 = Math.max(y2, r.y + r.h);
+    }
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  };
 
   // ---------- light shapes ----------
   /** A soft elliptical pool. */
@@ -541,9 +666,17 @@
   B._lightDebug = () => ({ lm, snaps, vc, sc });
 
   /** Composite a light canvas onto the scene: reveal the snapshot's colours tinted by the light, plus a little glare. */
-  function reveal(g, light, snapKey, glare = 0.12, strength = 0.92, gAdd = g, mesopic = false, tint = null) {
+  function reveal(g, light, snapKey, glare = 0.12, strength = 0.92, gAdd = g, mesopic = false, tint = null, R = null) {
     const sn = snaps[snapKey];
     if (sn && sn.ok && rg) {
+      rg.globalCompositeOperation = 'source-over';
+      rg.clearRect(0, 0, W, H);
+      rg.save();
+      if (R) {
+        rg.beginPath();
+        rg.rect(R.x, R.y, R.w, R.h);
+        rg.clip();
+      }
       rg.globalCompositeOperation = 'source-over';
       rg.clearRect(0, 0, W, H);
       rg.drawImage(sn[0], 0, 0);
@@ -568,6 +701,7 @@
       rg.globalCompositeOperation = 'destination-in';
       rg.drawImage(light, 0, 0);
       rg.globalCompositeOperation = 'source-over';
+      rg.restore();
       g.globalAlpha = strength;
       g.drawImage(rc, 0, 0);
       g.globalAlpha = 1;
@@ -598,7 +732,13 @@
         const sx = src.x + ox;
         return [sx + (x - sx) * m, src.y + (y - src.y) * m, m];
       };
+      // all the work happens in software: confine it to this surface's own rectangle
+      const RB = bbox(rcv.rects);
       pg.clearRect(0, 0, W, H);
+      pg.save();
+      pg.beginPath();
+      pg.rect(RB.x, RB.y, RB.w, RB.h);
+      pg.clip();
       pg.globalCompositeOperation = 'source-over';
       let patch = null;
       for (const ap of room.aperture(s)) {
@@ -658,7 +798,10 @@
           pg.globalAlpha = 1;
         } else pg.fillRect(Math.round(x1), Math.round(y1), Math.round(x2 - x1), Math.round(y2 - y1));
       }
-      if (!patch) continue;
+      if (!patch) {
+        pg.restore();
+        continue;
+      }
       // a dipped headlight: above its cut-off (just under the window) only stray light gets in, except the kick-up
       // wedge climbing diagonally on the nearside. Shape that on the glass, then project it like everything else.
       if (src.aim != null && src.cutY != null) {
@@ -691,7 +834,7 @@
       pg.imageSmoothingEnabled = true; // magnified masks get clean edges (the bands snap them back to the grid)
       pg.globalCompositeOperation = 'destination-out';
       pg.fillStyle = '#000';
-      pts.forEach(([ox, dD], pi) => {
+      (F.propShadows ? pts : []).forEach(([ox, dD], pi) => {
         const pa = src.pair && pi > 0 ? 0.4 : passA; // the second headlamp's shadow is a faint echo
         pg.globalAlpha = pa;
         for (const [x, y, w, h, z] of room.occluders()) {
@@ -732,7 +875,8 @@
       pg.globalAlpha = 1;
       pg.globalCompositeOperation = 'source-over';
       pg.imageSmoothingEnabled = false;
-      quantise(pg, 3, 0.8, true);
+      pg.restore();
+      if (F.bands) quantise(pg, 3, 0.8, true, RB);
       const clipTo = (c) => {
         c.save();
         c.beginPath();
@@ -742,19 +886,24 @@
       };
       clipTo(g);
       if (gAdd !== g) clipTo(gAdd);
-      if (rcv.reveal && !lit && src.a > 0.12 && mainCanvas && tgx && fgx && hgx) {
+      if (F.quietShadows && F.propShadows && rcv.reveal && !lit && src.a > 0.12 && mainCanvas && tgx && fgx && hgx) {
         // painterly: inside a shadow, texture quietens to the local mean colour (book spines become one dark mass), so
         // the silhouette reads as a shape rather than dissolving into the shelves behind it
-        quantise(bgx, 3, 0.8, true);
+        // (the uncut patch needs no banding of its own: it only masks where the shadows are)
         fgx.globalCompositeOperation = 'source-over';
         fgx.clearRect(0, 0, W, H);
         fgx.drawImage(bc, 0, 0);
         fgx.globalCompositeOperation = 'destination-out';
         fgx.drawImage(pc, 0, 0);
         fgx.globalCompositeOperation = 'source-over';
-        tgx.imageSmoothingEnabled = true;
-        tgx.clearRect(0, 0, tc.width, tc.height);
-        tgx.drawImage(mainCanvas, 0, 0, W, H, 0, 0, tc.width, tc.height);
+        if (quietT !== s.simT || quietFrame !== frameNo) {
+          // the scene's local mean colours, worked out once a frame
+          quietT = s.simT;
+          quietFrame = frameNo;
+          tgx.imageSmoothingEnabled = true;
+          tgx.clearRect(0, 0, tc.width, tc.height);
+          tgx.drawImage(mainCanvas, 0, 0, W, H, 0, 0, tc.width, tc.height);
+        }
         hgx.globalCompositeOperation = 'source-over';
         hgx.imageSmoothingEnabled = true;
         hgx.clearRect(0, 0, W, H);
@@ -766,7 +915,7 @@
         g.drawImage(hc, 0, 0);
         g.globalAlpha = 1;
       }
-      if (rcv.reveal && !lit) {
+      if (rcv.reveal && !lit && F.reveal) {
         // while a strong beam is in, the rest of the room drops into deep cool shadow, so the lit patch reads
         if (src.aim != null && src.a > 0.15) {
           // light bounced off the lit patch fills the room a little (in the beam's colour)
@@ -775,7 +924,7 @@
           for (const r of rcv.rects) g.fillRect(r.x, r.y, r.w, r.h);
           g.globalCompositeOperation = 'source-over';
         }
-        reveal(g, pc, 'in', src.aim != null ? 0.3 : src.blue ? 0.12 : 0, 0.95, gAdd, !!src.floor, src.blue ? '#6f8fff' : null); // glare only from bright point sources
+        reveal(g, pc, 'in', src.aim != null ? 0.3 : src.blue ? 0.12 : 0, 0.95, gAdd, !!src.floor, src.blue ? '#6f8fff' : null, RB); // glare only from bright point sources
       } else {
         gAdd.globalCompositeOperation = 'lighter';
         gAdd.globalAlpha = lit ? 0.45 : 0.9;
@@ -809,9 +958,12 @@
   /** The lights behind us that shine through the windows. */
   function lightsBehind(s, dark) {
     const list = [];
+    const steady = F.steadyLights;
     const h = s.hour;
     const t = now();
-    if (cyber()) {
+    if (!steady) {
+      /* steady lights off */
+    } else if (cyber()) {
       const cols = ['#ff3fa4', '#3ff5ff', '#a26bff'];
       list.push({ x: 140, y: -40, D: 200, compact: true, col: cols[Math.floor(t / 3) % 3], a: 0.15 * dark * (0.75 + 0.25 * Math.sin(t * 2.2)), soft: true });
       if (h >= 10 || h < 4) list.push({ x: 64, y: 150, D: 180, col: '#ffb070', a: 0.14 * dark, soft: true, floor: true });
@@ -897,13 +1049,29 @@
   let lastT = 0;
   function adapt() {
     const t = now();
-    const dt = lastT ? Math.min(0.2, t - lastT) : 0;
+    const dt = lastT ? clamp(t - lastT, 0, 0.2) : 0; // (never negative: tests freeze and restore the clock)
+    if (!Number.isFinite(exposure)) exposure = 1;
     lastT = t;
     if (B._lightAdaptInstant) return (exposure = exposureTarget); // for test renders
     const tau = exposureTarget < exposure ? 0.25 : 1.5;
     exposure += (exposureTarget - exposure) * (1 - Math.exp(-dt / tau));
     return exposure;
   }
+
+  Object.assign(B.lightKit, {
+    project: (g, s, src, room, gAdd) => {
+      if (ensure()) project(g, s, src, room, gAdd);
+    },
+    SHOP,
+    FLAT,
+    quantise,
+    reveal,
+    rgba,
+    pool,
+    mk,
+    snaps,
+    setMain: (c) => (mainCanvas = c),
+  });
 
   // ---------- each frame ----------
   B.decor({
@@ -916,15 +1084,16 @@
       const wet = s.weather.rain || 0;
       if (!ensure()) return;
       mainCanvas = g.canvas || null;
+      frameNo++;
       darkNow = Math.min(1, (1 - B.daylight(s.hour)) * 1.1);
       const surf = Math.exp(-1.2 * fog); // fog scatters light out of the beams before it reaches a surface
-      const vls = events.map((ev) => Object.assign(vehicleLight(ev), { ev }));
+      const vls = F.headlights ? events.map((ev) => Object.assign(vehicleLight(ev), { ev })) : [];
       lg.clearRect(0, 0, W, H);
       if (dark > 0.05) {
         // the steady lights (occluded by passing vehicles)
         sg2.clearRect(0, 0, W, H);
         sg2.globalCompositeOperation = 'source-over';
-        acrossTheRoad(sg2, s, dark);
+        if (F.steadyLights) acrossTheRoad(sg2, s, dark);
         lg.globalCompositeOperation = 'lighter';
         lg.globalAlpha = surf;
         lg.drawImage(sc, 0, 0);
@@ -973,13 +1142,13 @@
             vg.fillRect(Math.round(bx - 90), 72, 180, 4);
             if (bx > 160 && bx < 330) vg.fillRect(226, 92, 36, 8);
           }
-          if (dark > 0.3) facadeShadows(vg, s, L);
+          if (dark > 0.3 && F.facadeShadows) facadeShadows(vg, s, L);
           lg.globalCompositeOperation = 'lighter';
           lg.drawImage(vc, 0, 0);
         }
         lg.globalCompositeOperation = 'source-over';
         // exposure applies to everything: the scene itself dims a little as your eyes adjust to a beam...
-        const e = adapt();
+        const e = F.exposure ? adapt() : 1;
         if (e < 0.995) {
           g.save();
           g.beginPath();
@@ -996,7 +1165,7 @@
           lg.fillRect(0, 0, W, H);
           lg.globalCompositeOperation = 'source-over';
         }
-        quantise(lg, 5, 0.66);
+        if (F.bands) quantise(lg, 5, 0.66);
         // onto the building and pavement (not the sky, and not the windows: light through those is projected)
         g.save();
         g.beginPath();
@@ -1013,10 +1182,15 @@
         lg.globalCompositeOperation = 'destination-out';
         for (const a of actors) B.drawSilhouette(lg, a, a.x, a.y, 1, 1);
         lg.restore();
-        reveal(g, lm, 'out', 0.15, 1);
+        if (F.reveal) reveal(g, lm, 'out', 0.15, 1);
+        else {
+          g.globalCompositeOperation = 'lighter';
+          g.drawImage(lm, 0, 0);
+          g.globalCompositeOperation = 'source-over';
+        }
         g.restore();
         // anyone a strong beam sweeps over catches it: one flat level in the beam's colour, keyed on their front
-        for (const L of vls) {
+        for (const L of F.actorLight ? vls : []) {
           if (L.strength < 0.2) continue;
           const bx = L.aim != null ? L.aim : L.x + (L.ev.dir || 1) * 60;
           const half = L.main ? 100 : 70;
@@ -1037,7 +1211,7 @@
           }
         }
         // each person lit flat (one level, no dither) by the light where they stand
-        if (lmAlpha && snaps.out && snaps.out.ok) {
+        if (F.actorLight && lmAlpha && snaps.out && snaps.out.ok) {
           for (const a of actors) {
             const ix = clamp(Math.round(a.x), 0, W - 1);
             let lv = 0;
@@ -1060,13 +1234,13 @@
         const indoorDark = s.shop.lights ? 0.35 : 1;
         qg.clearRect(0, 0, W, H);
         ag.clearRect(0, 0, W, H);
-        const behind = lightsBehind(s, dark);
+        const behind = F.projection ? lightsBehind(s, dark) : [];
         for (const src of behind) {
           project(qg, s, Object.assign({}, src, { a: src.a * indoorDark * surf * (src.floor ? 0.6 + 0.4 * exposure : exposure) }), SHOP, ag);
           project(qg, s, Object.assign({}, src, { a: src.a * (s.upstairs.light ? 0.4 : 1) * (src.y > 150 ? 0.6 : 1) * surf * exposure }), FLAT, ag);
         }
         // the unlit shop window is a dark mirror: a sharp, faint image of the lit windows across the road
-        if (!s.shop.lights) {
+        if (!s.shop.lights && F.mirror) {
           const rf = 0.12 * dark * exposure;
           const mirror = (x0, x1, col) => {
             // 4 x 2 panes, drawn separately so the bars between them are simply gaps (the glare canvas is shared)
@@ -1105,7 +1279,7 @@
         g.globalCompositeOperation = 'source-over';
         // each headlamp glints once in the shop glass, at its own height (side-on lamps of passing cars, dimmer)
         g.globalCompositeOperation = 'lighter';
-        for (const L of vls) {
+        for (const L of F.glints ? vls : []) {
           const side = L.ev.kind === 'turn' ? 1 : 0.3;
           for (const lamp of L.lamps) {
             const a = Math.min(0.8, L.strength * dark * side);
@@ -1126,8 +1300,8 @@
           }
         }
         g.globalCompositeOperation = 'source-over';
-        rainReflections(g, s, dark, vls);
-        fogCones(g, s, vls);
+        if (F.rain) rainReflections(g, s, dark, vls);
+        if (F.fog) fogCones(g, s, vls);
       }
       // by day: a car's shadow sliding along the pavement and a glint of sun off its windscreen
       if (day > 0.4) {

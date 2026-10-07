@@ -230,6 +230,70 @@ async function shoot(tag, emit, report) {
     });
     await emit('F-cat-hero', sh.c);
   }
+  // G: the sun through the day, both themes
+  for (const theme of ['classic', 'cyber']) {
+    const sh = sheet(3, 2, 320, 180, 2);
+    let i = 0;
+    for (const hr of [9, 12, 15, 17, 18.9, 19.7]) {
+      await scene(theme, hr, {});
+      s.weather.cloud = 0.15;
+      setTraffic([{ kind: 'car', dur: 2.8, t: 1.2, dir: 1 }]);
+      const sun = B.sun ? B.sun(s) : { e: 0, phi: 0 };
+      sh.put(i++, frame(), 0, 0, `${theme} ${Math.floor(hr)}:${String(Math.round((hr % 1) * 60)).padStart(2, '0')} sun e=${sun.e.toFixed(0)} phi=${sun.phi.toFixed(0)}`);
+    }
+    await emit(`G-day-${theme}`, sh.c);
+  }
+  // H: early evening: golden hour with traffic, dusk turn, a cloudy afternoon's drifting shadows
+  {
+    const sh = sheet(2, 2, 320, 180, 2);
+    await scene('classic', 19.5, {});
+    setTraffic([{ kind: 'bus', dur: 4.2, t: 1.6, dir: 1 }]);
+    sh.put(0, frame(), 0, 0, 'classic 19:30 golden hour, a bus passing');
+    await scene('classic', 20.4, { mabelInside: true });
+    setTraffic([{ kind: 'turn', dir: 1, jx: 70, dur: 4.65, t: 2.0, main: true }]);
+    sh.put(1, frame(), 0, 0, 'classic 20:24 dusk, main-beam turn');
+    await scene('cyber', 20.0, {});
+    setTraffic([{ kind: 'car', dur: 2.8, t: 1.0, dir: -1 }]);
+    sh.put(2, frame(), 0, 0, 'cyber 20:00 dusk, car passing');
+    await scene('classic', 14.0, {});
+    s.weather.cloud = 0.7;
+    s.simT = 1000;
+    setTraffic([]);
+    sh.put(3, frame(), 0, 0, 'classic 14:00 broken cloud: drifting shadows');
+    await emit('H-evening', sh.c);
+  }
+  // I: what single approaches bring (split screens: left ON, right OFF)
+  if (B.lightFlags) {
+    const sh = sheet(2, 2, 320, 180, 2);
+    const split = (key, label, i) => {
+      const was = B.lightFlags[key];
+      B.lightFlags[key] = true;
+      const a = frame();
+      B.lightFlags[key] = false;
+      const b = frame();
+      B.lightFlags[key] = was;
+      const c = document.createElement('canvas');
+      c.width = 320;
+      c.height = 180;
+      const cg = c.getContext('2d');
+      cg.drawImage(a, 0, 0, 160, 180, 0, 0, 160, 180);
+      cg.drawImage(b, 160, 0, 160, 180, 160, 0, 160, 180);
+      cg.fillStyle = '#fff';
+      cg.fillRect(160, 0, 1, 180);
+      sh.put(i, c, 0, 0, `${label}: left ON | right OFF`);
+    };
+    await scene('classic', 12.5, {});
+    split('sun', 'noon: sunlight', 0);
+    await scene('classic', 19.7, {});
+    split('buildingShadow', 'golden hour: opposite buildings', 1);
+    await scene('classic', 21.8, { mabelInside: true });
+    setTraffic([{ kind: 'turn', dir: 1, jx: 70, dur: 4.65, t: 2.0, main: true }]);
+    split('palette', 'night turn: locked palette', 2);
+    await scene('classic', 17.0, { mabelInside: false });
+    setTraffic([]);
+    split('sunInterior', '17:00: sun through the glass', 3);
+    await emit('I-approaches', sh.c);
+  }
   setTraffic([]);
   B.setWeatherKind(s, null);
   B.setTheme(theme0);
