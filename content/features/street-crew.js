@@ -424,7 +424,7 @@
       const sunK = sun && !sun.behind ? sun.strength * Math.max(0, sun.facing) * (B.sunCloud ? B.sunCloud(s, 110) : 1) : 0;
       const dark = clamp(-P.e / 6, 0, 1);
       const shopK = s.shop.lights ? dark : 0;
-      const lightK = Math.max(0.25 * (1 - dark), 1.1 * sunK, 1.3 * shopK);
+      const lightK = Math.max(0.25 * (1 - dark), 1.1 * sunK, 0.55 * shopK);
       const warm = shopK > sunK;
       const sunny = sunK > 0.5;
       // the window's bins cover x 8..212, the door's 228..260

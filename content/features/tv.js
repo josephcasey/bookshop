@@ -104,6 +104,30 @@
     return true;
   };
 
+  // In the neon city the flat's lit rooms after dark are capped at about the fascia neon's brightness and lean toward
+  // the telly's colour, so the picture is the brightest thing up there; a room lit only by the set is dim but for it.
+  B.decor({
+    id: 'flat-exposure',
+    layer: 'overlay',
+    draw(g, s) {
+      if (B.theme !== 'cyber' || !B.sunPos || B.sunPos(s.hour).e > -2) return;
+      const U2 = s.upstairs;
+      if (!U2.light && !U2.tv) return;
+      const n = tv.now(s);
+      const tint = U2.tv && n && n.show && n.show.color ? n.show.color : '#8a7aa8';
+      g.save();
+      g.beginPath();
+      for (const u of B.LAYOUT.upstairs) g.rect(u.x, u.y, u.w, u.h);
+      if (U2.tv && B.tvRect) g.rect(B.tvRect.x, B.tvRect.y, B.tvRect.w, B.tvRect.h); // (even-odd: the screen is left alone)
+      g.clip('evenodd');
+      g.globalCompositeOperation = 'multiply';
+      g.globalAlpha = U2.light ? 0.45 : 0.75;
+      g.fillStyle = B.mix('#7a6a98', tint, 0.35);
+      g.fillRect(0, 0, 320, 60);
+      g.restore();
+    },
+  });
+
   // ---------- running the programme ----------
   let lastReal = 0;
   B.on('tick', (s) => {

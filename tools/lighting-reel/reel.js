@@ -366,13 +366,13 @@ async function shoot(tag, emit, report) {
     // 3: the cherry-picker crew at work
     reset();
     await scene('classic', 11.5, {});
-    C.picker = { state: 'work', x: 262, boom: 1, t: 5, cones: 2, spark: 0.1 };
+    C.picker = { state: 'work', x: 296, boom: 1, t: 5, cones: 2, spark: 0.1 };
     C.lampOff = true;
     setTraffic([]);
     sh.put(i++, frame(), 0, 0, 'classic 11:30 lamp crew in the cherry-picker');
     // 4: the same at dusk, the amber beacon on the front
     await scene('classic', B.sunTime(-3, true), {});
-    C.picker = { state: 'work', x: 262, boom: 1, t: 5, cones: 2, spark: 0 };
+    C.picker = { state: 'work', x: 296, boom: 1, t: 5, cones: 2, spark: 0 };
     C.lampOff = true;
     setTraffic([]);
     sh.put(i++, frame(), 0, 0, 'classic dusk: beacon turning, lamp dark while they work');
