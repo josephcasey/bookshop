@@ -33,16 +33,16 @@
 
   // ---------- the shops ----------
   const KINDS = {
-    pub: { fascia: '#1e3a2a', sign: '#d8b048', front: '#3a1e1a', lit: '#ffc070', hours: [11, 23.4], name: 'THE CROWN' },
+    pub: { fascia: '#1e3a2a', sign: '#d8b048', front: '#3a1e1a', lit: '#ffb060', hours: [11, 23.4], name: 'THE CROWN' },
     chippy: { fascia: '#1f4f9a', sign: '#ffffff', front: '#e8e8e0', lit: '#dcefff', hours: [11.5, 22], tiles: true },
     cafe: { fascia: '#2a2a2a', sign: '#e8dcc0', front: '#c8b898', lit: '#ffd8a0', hours: [7.5, 17], awning: ['#e8e0d0', '#2a5a3a'] },
     grocer: { fascia: '#2f6a2a', sign: '#f0e8c8', front: '#8a6a40', lit: '#fff0c8', hours: [8, 18.5], awning: ['#3a8a3a', '#e8e8d8'], crates: true },
     barber: { fascia: '#202430', sign: '#e8e8e8', front: '#d8d8d8', lit: '#e8f4ff', hours: [9, 18], pole: true },
-    news: { fascia: '#b02020', sign: '#ffffff', front: '#5a5048', lit: '#fff4d8', hours: [6, 21], boards: true },
+    news: { fascia: '#b02020', sign: '#ffffff', front: '#5a5048', lit: '#ffe070', hours: [6, 21.5], boards: true },
     bakery: { fascia: '#6a3a2a', sign: '#f0d8a0', front: '#d8c0a0', lit: '#ffe0a8', hours: [7, 16], awning: ['#c88a5a', '#f0e0c8'] },
     charity: { fascia: '#5a2a6a', sign: '#ffffff', front: '#c8c0d0', lit: '#fff0e0', hours: [9.5, 17] },
-    bookie: { fascia: '#183a6a', sign: '#ffd040', front: '#283040', lit: '#c8e0ff', hours: [9, 22] },
-    launderette: { fascia: '#3a8ab0', sign: '#ffffff', front: '#e8f0f0', lit: '#e8fff8', hours: [7, 22] },
+    bookie: { fascia: '#183a6a', sign: '#ffd040', front: '#283040', lit: '#c8e0ff', hours: [9, 22], neon: '#ff3030' },
+    launderette: { fascia: '#3a8ab0', sign: '#ffffff', front: '#e8f0f0', lit: '#d8ecff', hours: [7, 22] },
   };
   // the neon city has its own row: ramen, pachinko, a clinic, a noodle counter...
   const CYBER = {
@@ -70,7 +70,10 @@
       if (b.gap) continue;
       const mid = b.x + b.w / 2;
       // the pub and the chippy sit where their light prints fall on the shopfront at night
-      b.kind = Math.abs(mid - 68) < b.w / 2 + 4 ? 'pub' : Math.abs(mid - 224) < b.w / 2 + 4 ? 'chippy' : others[oi++ % others.length];
+      // the pub and the chippy sit where their light prints fall on the shopfront at night (each may take two buildings)
+      const over = (a0, a1) => b.x < a1 && b.x + b.w > a0 && Math.min(a1, b.x + b.w) - Math.max(a0, b.x) > 10;
+      b.kind = over(24, 110) ? 'pub' : over(186, 262) ? 'chippy' : others[oi++ % others.length];
+      void mid;
       b.brick = BRICK[Math.floor(rng() * BRICK.length)];
       b.cyberStyle = CYBER.other[Math.floor(rng() * CYBER.other.length)];
       b.door = rng() < 0.5 ? 0 : 1;
@@ -183,13 +186,13 @@
           g.fillRect(Math.round(gx(doorL ? s0 + 1.1 * PX : s1 - 1.1 * PX)), Math.round(gy(1.9)) + i, 1, 1);
         }
       } else if (b.kind === 'launderette') {
-        g.fillStyle = night ? (open ? '#ffffff' : BLACK) : '#e8f0f0';
+        g.fillStyle = night ? (open ? '#f4fbff' : BLACK) : '#e8f0f0'; // lit portholes
         for (let x = Math.round(gx(wx0)) + 1; x < Math.round(gx(wx1)) - 1; x += 3) g.fillRect(x, Math.round(gy(1.0)), 2, 2);
       } else if (b.kind === 'news' && open && !night) {
         g.fillStyle = '#f0f0e8';
         g.fillRect(Math.round(gx(doorL ? s0 - 0.6 * PX : s1 + 0.2 * PX)), groundY - 3, 2, 3);
       } else if (b.kind === 'bookie') {
-        g.fillStyle = dim('#c02020');
+        g.fillStyle = night && open ? '#ff3030' : dim('#c02020'); // a red neon strip after dark
         g.fillRect(fa, fy + 2, fb - fa, 1);
       }
       if (b.kind === 'grocer' && open && !night) {
