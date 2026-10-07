@@ -141,6 +141,12 @@
           const wx = x0 + i * pitch + pitch / 2 - 0.45 * PX;
           const litUp = night && b.flats[(f * nW + i) % 12] < 0.45 && s.hour > 17 && s.hour < 23.5;
           if (night && !litUp) continue;
+          if (cy && night) {
+            // a holo board or a strip light: a thin bar, not a lit room
+            g.fillStyle = ['#ff3fa4', '#3ff5ff', '#a26bff', '#ffb238'][Math.floor(b.flats[(f + i) % 12] * 4)];
+            g.fillRect(Math.round(gx(wx)), Math.round(gy(h0 + 0.7)), Math.max(2, Math.round(gx(wx + 0.9 * PX)) - Math.round(gx(wx))), 1);
+            continue;
+          }
           const v = b.flats[(f * nW + i + 5) % 12];
           const warm = cy ? '#b0a0ff' : v < 0.15 ? '#8aa8ff' : v < 0.5 ? '#f0c070' : v < 0.8 ? '#ffd8a0' : '#e0a060'; // a telly's blue, lamps
           R(wx, wx + 0.9 * PX, h0, h0 + 1.4, litUp ? warm : cy ? '#141826' : '#3a4250');
@@ -155,8 +161,24 @@
       const doorL = !b.door;
       const wx0 = doorL ? s0 + 1.2 * PX : s0;
       const wx1 = doorL ? s1 : s1 - 1.2 * PX;
-      if (lit || !night) R(wx0, wx1, 0.5, 2.4, lit ? k.lit : cy ? '#101420' : '#3a4250');
-      if (lit || !night) R(doorL ? s0 + 0.2 * PX : s1 - 1.0 * PX, doorL ? s0 + 1.0 * PX : s1 - 0.2 * PX, 0, 2.2, lit ? B.mix(k.lit, '#000', 0.3) : '#2a2a30');
+      if (cy && night) {
+        // the neon city after dark: only the tubes reflect, one saturated hue per shop, a faint glow inside
+        const a = Math.round(gx(wx0));
+        const bb = Math.round(gx(wx1));
+        const top = Math.round(gy(2.4));
+        const bot = Math.round(gy(0.5));
+        g.fillStyle = k.neon;
+        g.globalAlpha = 0.14;
+        g.fillRect(a, top, bb - a, bot - top);
+        g.globalAlpha = 1;
+        g.fillRect(a, top, bb - a, 1);
+        g.fillRect(a, bot - 1, bb - a, 1);
+        g.fillRect(a, top, 1, bot - top);
+        g.fillRect(bb - 1, top, 1, bot - top);
+      } else {
+        if (lit || !night) R(wx0, wx1, 0.5, 2.4, lit ? k.lit : cy ? '#101420' : '#3a4250');
+        if (lit || !night) R(doorL ? s0 + 0.2 * PX : s1 - 1.0 * PX, doorL ? s0 + 1.0 * PX : s1 - 0.2 * PX, 0, 2.2, lit ? B.mix(k.lit, '#000', 0.3) : '#2a2a30');
+      }
       // the fascia: one saturated hue, 2 px; lit (or neon) after dark when open
       const fy = Math.round(gy(3.1));
       const fa = Math.round(gx(s0));
@@ -435,9 +457,9 @@
         const dir = lane === 100 ? -1 : 1;
         spawn({ kind: 'car', m, dir, v: 14 * PX * m * dir, gy: { 60: 24, 100: 31, 160: 37 }[lane] + B.rnd(-2, 2) });
       }
-      if (!cy && P.e > -2 && Math.random() < dt * 0.05) spawn({ kind: 'gull', m: 14 / (14 + B.rnd(18, 40)), dir: B.chance(0.5) ? 1 : -1, v: 0 });
-      if (!cy && Math.random() < dt * 0.012) spawn({ kind: 'plane', m: 0.00175, dir: B.chance(0.5) ? 1 : -1, v: 0, gy: B.rnd(21, 30) });
-      if (!cy && P.e < -4 && Math.random() < dt * 0.006) spawn({ kind: 'heli', m: 0.045, dir: B.chance(0.5) ? 1 : -1, v: 0 });
+      if (!cy && P.e > -2 && Math.random() < dt * 0.05) spawn({ kind: 'gull', m: 14 / (14 + B.rnd(50, 90)), dir: B.chance(0.5) ? 1 : -1, v: 0 });
+      if (!cy && Math.random() < dt * 0.012) spawn({ kind: 'plane', m: 0.00044, dir: B.chance(0.5) ? 1 : -1, v: 0, gy: B.rnd(21, 30) });
+      if (!cy && P.e < -4 && Math.random() < dt * 0.006) spawn({ kind: 'heli', m: 0.0115, dir: B.chance(0.5) ? 1 : -1, v: 0 });
     }
     for (const f of flyers) {
       f.t += dt;
@@ -457,12 +479,21 @@
     g.beginPath();
     for (const u of B.LAYOUT.upstairs) g.rect(u.x, u.y, u.w, u.h);
     g.clip();
+    flyers.sort((a, b) => a.m - b.m); // far to near
     for (const f of flyers) {
       const x = Math.round(f.gx);
       const y = Math.round(f.gy);
       if (f.kind === 'car') {
         const w = Math.max(3, Math.round(4.5 * PX * f.m));
         const h = Math.max(1, Math.round(1.4 * PX * f.m));
+        // a streak of its running light behind it (it crosses a pane in a fraction of a second)
+        const rc = ['#ff3fa4', '#3ff5ff', '#a26bff'][Math.floor(f.seed * 3)];
+        g.fillStyle = rc;
+        for (let i = 1; i <= 4; i++) {
+          g.globalAlpha = 0.5 * (1 - i / 5);
+          g.fillRect(f.dir > 0 ? x - (w >> 1) - i * 2 : x + (w >> 1) + (i - 1) * 2, y - 1, 2, 1);
+        }
+        g.globalAlpha = 1;
         if (night < 0.7) {
           g.fillStyle = '#16141e';
           g.fillRect(x - (w >> 1), y - h, w, h);
@@ -478,12 +509,21 @@
       } else if (f.kind === 'gull') {
         const up = Math.sin(t * 9 + f.seed * 6) > 0;
         g.fillStyle = night > 0.3 ? '#3a3a44' : '#f4f4f0';
-        g.fillRect(x - 2, y - (up ? 1 : 0), 2, 1);
-        g.fillRect(x + 1, y - (up ? 1 : 0), 2, 1);
-        g.fillRect(x, y, 1, 1);
+        // a 'v' that flaps: wings up, then level
+        g.fillRect(x - 2, y - (up ? 1 : 0), 1, 1);
+        g.fillRect(x - 1, y, 1, 1);
+        g.fillRect(x, y + 1, 1, 1);
+        g.fillRect(x + 1, y, 1, 1);
+        g.fillRect(x + 2, y - (up ? 1 : 0), 1, 1);
       } else if (f.kind === 'plane') {
         // a glint of an airliner and its contrail, catching the low sun pink at dusk
-        const tc = P.e < 4 && P.e > -6 ? '#f0c0b0' : '#ffffff';
+        // at ~10 km the trail stays sunlit until the sun is ~3.5 deg down: gold, then red, then in the earth's shadow
+        if (P.e < -6 && night > 0.6) {
+          g.fillStyle = Math.floor(t * 1.5) % 2 ? '#ff4040' : '#000';
+          g.fillRect(x, y, 1, 1);
+          continue;
+        }
+        const tc = P.e > 3 ? '#ffffff' : P.e > 0 ? '#ffd090' : P.e > -3.5 ? '#ff8050' : '#6a6a80';
         for (let i = 1; i < 26; i++) {
           g.fillStyle = tc;
           g.globalAlpha = (1 - i / 26) * 0.7;

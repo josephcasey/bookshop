@@ -275,7 +275,7 @@
       yield 1.2; // a cone down
       if (P()) P().cones = 1;
       n.pose = 'stand';
-      yield n.walkTo(306);
+      yield n.walkTo(312);
       n.pose = 'crouch';
       yield 1.2;
       if (P()) P().cones = 2;
@@ -283,7 +283,7 @@
       yield n.walkTo(268);
       n.face && n.face(1);
       while (P() && P().state !== 'pack') yield 1;
-      yield n.walkTo(306);
+      yield n.walkTo(312);
       n.pose = 'crouch';
       yield 1;
       if (P()) P().cones = 1;
@@ -300,7 +300,7 @@
     B.spawn(s, 'lamp-crew', { fromLeft: true });
     B.log(B.pick(['A council cherry-picker pulls up by the street lamp.', 'The lamp crew are here to sort out the flickering street light.']));
   }
-  const PARK = 262; // the truck's centre when parked (it stands in the road, in front of the pavement)
+  const PARK = 296; // the truck's centre when parked (in the road in front of the pavement, its cab off to the right)
   function stepPicker(s, dt) {
     const p = crew.picker;
     if (!p) return;
@@ -376,28 +376,36 @@
     return v - Math.floor(v);
   };
   /** Grime and wet sheen on a stretch of glass: speckles of dust, denser spray low down, drying streaks. */
-  function grime(g, x0, y0, w, h, dirt, wet, nb) {
+  function grime(g, x0, y0, w, h, dirt, wet, nb, lightK, warm, sunny) {
     for (let i = 0; i < nb; i++) {
       const d = dirt[i];
       const bx = x0 + Math.floor((i * w) / nb);
       const bw = Math.max(1, Math.floor(((i + 1) * w) / nb) - Math.floor((i * w) / nb));
       if (d > 0.05) {
         const n = Math.round(d * h * 0.35);
-        for (let k = 0; k < n; k++) {
-          const r = hash(i + bx, k);
-          const low = Math.pow(hash(k, i + 3), 0.45); // spray: more speckles toward the bottom
-          const yy = y0 + Math.floor(low * h);
-          g.fillStyle = r < 0.5 ? `rgba(150,138,112,${(0.18 * d).toFixed(3)})` : `rgba(90,84,74,${(0.12 * d).toFixed(3)})`;
-          g.fillRect(bx + Math.floor(r * bw), yy, 1, 1);
+        const a = d * lightK;
+        if (a > 0.01) {
+          // a faint veil, then the specks (road spray: more toward the bottom)
+          g.fillStyle = warm ? `rgba(255,220,170,${(0.06 * a).toFixed(3)})` : `rgba(225,222,214,${(0.05 * a).toFixed(3)})`;
+          g.fillRect(bx, y0 + (h >> 1), bw, h - (h >> 1));
+          for (let k = 0; k < n; k++) {
+            const r = hash(i + bx, k);
+            const low = Math.pow(hash(k, i + 3), 0.45);
+            const yy = y0 + Math.floor(low * h);
+            g.fillStyle = warm ? `rgba(255,214,160,${(0.3 * a).toFixed(3)})` : r < 0.6 ? `rgba(228,224,214,${(0.3 * a).toFixed(3)})` : `rgba(120,112,98,${(0.15 * a).toFixed(3)})`;
+            g.fillRect(bx + Math.floor(r * bw), yy, 1, 1);
+          }
         }
       }
-      if (wet[i] > 0.05) {
-        // a wet sheen: a pale film with drips running down from the last stroke
-        g.fillStyle = `rgba(220,235,250,${(0.1 * wet[i]).toFixed(3)})`;
-        g.fillRect(bx, y0, bw, h);
-        if (hash(i, 9) < 0.5) {
-          g.fillStyle = `rgba(235,245,255,${(0.35 * wet[i]).toFixed(3)})`;
-          g.fillRect(bx + Math.floor(hash(i, 2) * bw), y0 + h - Math.round(h * (1 - wet[i]) * 0.6) - 3, 1, 3);
+      if (wet[i] > 0.05 && hash(i, 9) < 0.5) {
+        // a water film reflects a little less than dry glass; what shows is the drips running down, glinting in the sun
+        const dy = y0 + h - Math.round(h * (1 - wet[i]) * 0.6) - 3;
+        const dx = bx + Math.floor(hash(i, 2) * bw);
+        g.fillStyle = `rgba(200,220,235,${(0.25 * wet[i]).toFixed(3)})`;
+        g.fillRect(dx, dy, 1, 3);
+        if (sunny && hash(i, 4) < 0.4) {
+          g.fillStyle = `rgba(255,250,235,${(0.8 * wet[i]).toFixed(3)})`;
+          g.fillRect(dx, dy + 2, 1, 1);
         }
       }
     }
@@ -409,14 +417,24 @@
       const W = L().win;
       const D = L().doorGlass;
       const wTop = W.y + 21;
+      // how much the dust lights up: the sun on the glass, the shop's own lamps behind it after dark (forward
+      // scatter: the strongest read), little in plain shade
+      const sun = B.sun ? B.sun(s) : null;
+      const P = B.sunPos(s.hour);
+      const sunK = sun && !sun.behind ? sun.strength * Math.max(0, sun.facing) * (B.sunCloud ? B.sunCloud(s, 110) : 1) : 0;
+      const dark = clamp(-P.e / 6, 0, 1);
+      const shopK = s.shop.lights ? dark : 0;
+      const lightK = Math.max(0.25 * (1 - dark), 1.1 * sunK, 1.3 * shopK);
+      const warm = shopK > sunK;
+      const sunny = sunK > 0.5;
       // the window's bins cover x 8..212, the door's 228..260
       const wb0 = binOf(W.x);
       const wb1 = binOf(W.x + W.w);
-      grime(g, W.x, wTop, W.w, W.h - 21, crew.dirt.subarray(wb0, wb1), crew.wet.subarray(wb0, wb1), wb1 - wb0);
+      grime(g, W.x, wTop, W.w, W.h - 21, crew.dirt.subarray(wb0, wb1), crew.wet.subarray(wb0, wb1), wb1 - wb0, lightK, warm, sunny);
       const db0 = binOf(D.x);
       const db1 = binOf(D.x + D.w);
-      grime(g, D.x, D.y, D.w, D.h, crew.dirt.subarray(db0, db1), crew.wet.subarray(db0, db1), db1 - db0);
-      L().upstairs.forEach((u, i) => grime(g, u.x, u.y, u.w, u.h, crew.dirtUp[i], crew.wetUp[i], 11));
+      grime(g, D.x, D.y, D.w, D.h, crew.dirt.subarray(db0, db1), crew.wet.subarray(db0, db1), db1 - db0, lightK, warm, sunny);
+      L().upstairs.forEach((u, i) => grime(g, u.x, u.y, u.w, u.h, crew.dirtUp[i], crew.wetUp[i], 11, Math.max(lightK * (s.shop.lights ? 0.4 : 1), s.upstairs.light ? 1.2 * dark : 0), s.upstairs.light && dark > 0.5, sunny));
     },
   });
   // the cleaner's pole and the drone are in front of the glass: drawn over its reflection
@@ -456,10 +474,18 @@
       const d = crew.drone;
       if (d) {
         const sun = B.sun ? B.sun(s) : null;
-        if (sun && sun.strength > 0.1 && !sun.behind && !cyber()) {
-          const dd = 20; // ~0.9 m off the wall
-          g.fillStyle = 'rgba(0,0,0,0.18)';
-          g.fillRect(Math.round(d.x - dd * sun.tanP) - 3, Math.round(d.y + (dd * sun.tanE) / sun.cosP), 7, 2);
+        const lineY = B.sunShadeLine ? B.sunShadeLine(s, d.x) : 999;
+        const cloud = B.sunCloud ? B.sunCloud(s, d.x) : 1;
+        if (sun && sun.strength > 0.1 && !sun.behind && sun.facing > 0.05 && d.y < lineY && cloud > 0.7) {
+          const dd = 20; // ~0.9 m off the wall: a hard-edged copy of its silhouette
+          const sx = Math.round(d.x - dd * sun.tanP);
+          const sy = Math.round(d.y + (dd * sun.tanE) / sun.cosP);
+          // no shadow on clear glass: it falls on the room behind, further down
+          const onGlass = L().upstairs.some((u) => sx > u.x && sx < u.x + u.w && sy > u.y && sy < u.y + u.h);
+          const gy = onGlass ? sy + Math.round((22 * sun.tanE) / sun.cosP) : sy;
+          g.fillStyle = `rgba(0,0,0,${(0.3 * sun.strength * (onGlass ? 0.6 : 1)).toFixed(3)})`;
+          g.fillRect(sx - 3, gy, 7, 3);
+          g.fillRect(sx - 6, gy, 13, 1);
         }
         drawDrone(g, d, s);
       }
@@ -495,103 +521,226 @@
     }
   }
 
-  // the truck in the road and its boom; the basket up at the lamp head
+  // ---------- the cherry-picker: geometry shared by the machine, its shadow and its beacon ----------
+  function rig(p) {
+    const X = Math.round(p.x);
+    const LAMPX = (B.renderKit && B.renderKit.LAMP) || 277;
+    const k = p.boom;
+    const base = [X - 18, 171];
+    const target = [LAMPX - 13, 27];
+    // the knuckle swings out to the right as the boom unfolds
+    const knee = [base[0] + 16 * k, base[1] - 74 * k];
+    const tip = [knee[0] + (target[0] - knee[0]) * k, knee[1] + (target[1] - knee[1]) * k + (1 - k) * 4];
+    return { X, LAMPX, base, knee, tip };
+  }
+  const thick = (g, a, b, w, top, under) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1])));
+    for (let i = 0; i <= n; i++) {
+      const x = Math.round(a[0] + ((b[0] - a[0]) * i) / n);
+      const y = Math.round(a[1] + ((b[1] - a[1]) * i) / n);
+      g.fillStyle = under;
+      g.fillRect(x - (w >> 1), y - (w >> 1), w, w);
+      g.fillStyle = top;
+      g.fillRect(x - (w >> 1), y - (w >> 1), w, 1); // lit along its top edge
+    }
+  };
+  // the cones go on the pavement (behind passers-by)
+  B.decor({
+    id: 'crew-cones',
+    layer: 'street',
+    draw(g, s) {
+      const p = crew.picker;
+      if (p && p.cones > 0) for (const cx of [252, 312].slice(0, p.cones)) drawCone(g, cx, 172);
+      // by day the boom and basket throw their shadow on the front (the boom stands ~3 m out in the road)
+      if (!p || p.boom < 0.05 || !B.sun) return;
+      const sun = B.sun(s);
+      if (sun.strength < 0.1 || sun.behind || sun.facing < 0.05) return;
+      const r = rig(p);
+      const d = 70;
+      const dx = -d * sun.tanP;
+      const dy = (d * sun.tanE) / sun.cosP;
+      const sh = (pt) => [pt[0] + dx, pt[1] + dy];
+      g.save();
+      g.beginPath();
+      g.rect(0, 8, 280, 156); // the front only
+      g.clip();
+      g.globalAlpha = 0.28 * sun.strength;
+      thick(g, sh(r.base), sh(r.knee), 3, '#000', '#000');
+      thick(g, sh(r.knee), sh(r.tip), 2, '#000', '#000');
+      g.fillStyle = '#000';
+      g.fillRect(Math.round(r.tip[0] + dx) - 3, Math.round(r.tip[1] + dy) - 9, 6, 14);
+      g.restore();
+    },
+  });
+  // the beacon: a rotating reflector ~3 m out at 1.7 m: a small spot that creeps across the front near the normal and
+  // whips off to the side, brightest square-on (cos^3), visible only once the daylight has gone (~1-3% of noon)
+  let bc = null;
+  let bg = null;
+  function beacon(g, s, p, r) {
+    const P = B.sunPos(s.hour);
+    const k = clamp((2 - P.e) / 8, 0, 1);
+    const t = performance.now() / 1000;
+    const ph = (t * 1.5) % 1;
+    const bxs = r.X + 26;
+    if (ph >= 0.5 || k <= 0.01) return { ph, bxs, on: ph < 0.5 };
+    const th = clamp((2 * ph - 0.5) * Math.PI, -1.4, 1.4);
+    const c = Math.cos(th);
+    const sx = bxs + 3 * PX_M * Math.tan(th);
+    const rx = 9 / c;
+    const ry = 6 / c;
+    const a = 0.7 * k * c * c * c;
+    if (!bc) {
+      bc = document.createElement('canvas');
+      bc.width = 320;
+      bc.height = 180;
+      bg = bc.getContext('2d');
+    }
+    // albedo x E: the scene under the spot, tinted amber, added back
+    bg.globalCompositeOperation = 'source-over';
+    bg.clearRect(0, 0, 320, 180);
+    const K = B.lightKit;
+    const snap = K && K.snaps && K.snaps.out && K.snaps.out.ok ? K.snaps.out[0] : g.canvas; // the street's true colours
+    bg.drawImage(snap, 0, 0);
+    bg.globalCompositeOperation = 'multiply';
+    bg.fillStyle = '#ffa030';
+    bg.fillRect(0, 0, 320, 180);
+    bg.globalCompositeOperation = 'destination-in';
+    bg.save();
+    bg.translate(sx, 125);
+    bg.scale(rx, ry);
+    const gr = bg.createRadialGradient(0, 0, 0, 0, 0, 1);
+    gr.addColorStop(0, 'rgba(0,0,0,1)');
+    gr.addColorStop(0.6, 'rgba(0,0,0,0.7)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    bg.fillStyle = gr;
+    bg.fillRect(-1, -1, 2, 2);
+    bg.restore();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = Math.min(1, a * 2.2);
+    g.drawImage(bc, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    // ...and its image in the shop's glass: a blinking amber point
+    if (B.reflectAt) {
+      const [gx, gy] = B.reflectAt(bxs, 1.7, 3);
+      const W = L().win;
+      if (gx > W.x && gx < W.x + W.w) {
+        g.fillStyle = `rgba(255,180,60,${(0.5 * k).toFixed(3)})`;
+        g.fillRect(Math.round(gx), Math.round(gy), 2, 2);
+      }
+    }
+    return { ph, bxs, on: true };
+  }
+  const PX_M = 23;
+
+  // the machine itself, in the road in front of the pavement
   B.decor({
     id: 'cherry-picker',
     layer: 'road',
     draw(g, s) {
       const p = crew.picker;
-      const cy = cyber();
-      // cones on the pavement
-      if (p && p.cones > 0) for (const cx of [252, 306].slice(0, p.cones)) drawCone(g, cx, 178);
       if (!p) return;
-      const X = Math.round(p.x);
-      const LAMPX = (B.renderKit && B.renderKit.LAMP) || 277;
-      // the truck, seen over the bottom edge: cab roof, the flatbed and its turntable
-      const body = cy ? '#2a2a3a' : '#f0f0e8';
+      const cy = cyber();
+      const r = rig(p);
+      const X = r.X;
+      const body = cy ? '#2a2a3a' : '#e8e6de';
+      const bodyD = cy ? '#1a1a26' : '#b8b6ae';
       const stripe = cy ? '#ff8a1a' : '#e0701a';
+      // the flatbed over the bottom edge, outriggers down, the cab's nose at the right
       g.fillStyle = body;
-      g.fillRect(X - 40, 174, 80, 6); // flatbed side
-      g.fillRect(X + 26, 165, 18, 15); // the cab
-      g.fillStyle = '#20242c';
-      g.fillRect(X + 29, 167, 12, 5); // cab window
+      g.fillRect(X - 44, 175, 66, 5);
+      g.fillStyle = bodyD;
+      g.fillRect(X - 44, 178, 66, 2);
       g.fillStyle = stripe;
-      for (let x = X - 40; x < X + 44; x += 6) g.fillRect(x, 176, 3, 2); // chevrons
-      // the amber beacon on the cab roof, turning
-      const t = performance.now() / 1000;
-      const ph = (t * 1.6) % 1;
-      const on = ph < 0.5;
-      g.fillStyle = on ? '#ffb020' : '#7a4a10';
-      g.fillRect(X + 33, 162, 4, 3);
-      if (on) {
-        g.save();
-        g.globalCompositeOperation = 'lighter';
-        const P = B.sunPos(s.hour);
-        const k = clamp((8 - P.e) / 14, 0.15, 1); // reads far more at dusk
-        // the beam sweeps across the front: a soft amber pool
-        const bx = X + 35 + Math.cos(ph * Math.PI * 2) * 110;
-        const gr = g.createRadialGradient(bx, 140, 2, bx, 140, 70);
-        gr.addColorStop(0, `rgba(255,170,40,${(0.22 * k).toFixed(3)})`);
-        gr.addColorStop(1, 'rgba(255,170,40,0)');
-        g.fillStyle = gr;
-        g.fillRect(bx - 70, 60, 140, 120);
-        const gb = g.createRadialGradient(X + 35, 160, 0, X + 35, 160, 9);
-        gb.addColorStop(0, `rgba(255,190,60,${(0.6 * k).toFixed(3)})`);
-        gb.addColorStop(1, 'rgba(255,190,60,0)');
-        g.fillStyle = gb;
-        g.fillRect(X + 26, 151, 18, 18);
-        g.restore();
-      }
-      // the boom: turntable, lower arm, knuckle, upper arm to the basket beside the lamp head
-      const base = [X - 10, 172];
-      const k = p.boom;
-      const target = [LAMPX - 16, 26];
-      const knee = [base[0] + (target[0] - base[0]) * 0.45 - 18 * k, base[1] - (base[1] - 95) * k];
-      const tip = [base[0] + (target[0] - base[0]) * k, base[1] - (base[1] - target[1]) * k];
+      for (let x = X - 44; x < X + 22; x += 6) g.fillRect(x, 175, 3, 1); // chevrons
+      g.fillStyle = body;
+      g.fillRect(X + 22, 166, 22, 14); // the cab
+      g.fillRect(X + 40, 170, 6, 10); // its nose
+      g.fillStyle = cy ? '#0c0e16' : '#2a3038';
+      g.fillRect(X + 25, 168, 13, 5); // windscreen
+      g.fillStyle = bodyD;
+      g.fillRect(X + 22, 178, 24, 2);
       g.fillStyle = '#3a3a40';
-      g.fillRect(base[0] - 4, 169, 9, 5);
-      const arm = (a, b, w, c) => {
-        const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
-        g.fillStyle = c;
-        for (let i = 0; i <= n; i++) g.fillRect(Math.round(a[0] + ((b[0] - a[0]) * i) / n) - (w >> 1), Math.round(a[1] + ((b[1] - a[1]) * i) / n) - (w >> 1), w, w);
-      };
-      arm(base, knee, 3, cy ? '#5a5a6a' : '#e8e8e0');
-      arm(knee, tip, 2, cy ? '#ff8a1a' : '#e0701a');
-      // the basket with a lineman in it
-      const bx = Math.round(tip[0]);
-      const by = Math.round(tip[1]);
-      g.fillStyle = cy ? '#ff8a1a' : '#f0a020';
-      g.fillRect(bx - 5, by, 10, 6);
-      g.fillStyle = '#1a1a1a';
-      g.fillRect(bx - 5, by, 10, 1);
-      g.fillStyle = '#ff8a1a';
-      g.fillRect(bx - 2, by - 6, 4, 6); // hi-vis
+      g.fillRect(X - 46, 176, 2, 4); // outrigger
+      // the beacon on the cab roof: a hard 2x2 head
+      const t = performance.now() / 1000;
+      const ph = (t * 1.5) % 1;
+      g.fillStyle = ph < 0.5 ? '#ffc040' : '#8a5010';
+      g.fillRect(X + 26, 164, 2, 2);
+      // the boom: turntable, lower arm with its ram, knuckle, upper arm to the basket
+      g.fillStyle = '#3a3a40';
+      g.fillRect(r.base[0] - 4, 169, 9, 6);
+      const lo = cy ? ['#8a8a9a', '#4a4a5a'] : ['#f4f2ea', '#a8a69e'];
+      const hi = cy ? ['#ffb050', '#c05a10'] : ['#f0a040', '#b05010'];
+      thick(g, r.base, r.knee, 3, lo[0], lo[1]);
+      thick(g, [r.base[0] + 3, r.base[1] - 2], [r.base[0] + (r.knee[0] - r.base[0]) * 0.55 + 3, r.base[1] + (r.knee[1] - r.base[1]) * 0.55], 1, '#c8c8cc', '#c8c8cc'); // ram
+      g.fillStyle = '#3a3a40';
+      g.fillRect(Math.round(r.knee[0]) - 2, Math.round(r.knee[1]) - 2, 4, 4); // knuckle
+      thick(g, r.knee, r.tip, 2, hi[0], hi[1]);
+      // the basket and the lineman in it
+      const bx = Math.round(r.tip[0]);
+      const by = Math.round(r.tip[1]);
+      g.fillStyle = '#ff9a20';
+      g.fillRect(bx - 3, by - 6, 4, 6); // hi-vis
+      g.fillStyle = '#f4f840';
+      g.fillRect(bx - 3, by - 4, 4, 1); // its reflective stripe
       g.fillStyle = '#d9a47e';
-      g.fillRect(bx - 1, by - 9, 3, 3);
-      g.fillStyle = '#f0f0e8';
-      g.fillRect(bx - 2, by - 10, 5, 2); // hard hat
+      g.fillRect(bx - 2, by - 9, 3, 3);
+      g.fillStyle = '#f4f4ee';
+      g.fillRect(bx - 3, by - 10, 5, 2); // hard hat
+      g.fillStyle = cy ? '#ff8a1a' : '#f0b020';
+      g.fillRect(bx - 4, by, 7, 5); // the basket
+      g.fillStyle = '#5a4010';
+      g.fillRect(bx - 4, by + 4, 7, 1);
+      g.fillStyle = '#1a1a1a';
+      g.fillRect(bx - 4, by, 7, 1);
       if (p.state === 'work') {
-        // reaching up into the lamp head; the odd spark
         const reach = Math.sin(t * 3) > 0;
-        g.fillStyle = '#ff8a1a';
-        g.fillRect(bx + 2, by - 7 - (reach ? 2 : 0), 1, 4);
-        g.fillRect(bx + 3, by - 9 - (reach ? 2 : 0), LAMPX - bx - 8, 1);
+        g.fillStyle = '#ff9a20';
+        g.fillRect(bx + 1, by - 8 - (reach ? 1 : 0), Math.max(1, r.LAMPX - 6 - bx), 1); // reaching into the lamp head
         if (p.spark > 0) {
           g.fillStyle = '#fff0a0';
-          for (let i = 0; i < 4; i++) g.fillRect(LAMPX - 6 + Math.floor(Math.random() * 6), 18 + Math.floor(Math.random() * 6), 1, 1);
+          for (let i = 0; i < 4; i++) g.fillRect(r.LAMPX - 6 + Math.floor(Math.random() * 6), 18 + Math.floor(Math.random() * 6), 1, 1);
         }
+      }
+    },
+  });
+  // its light comes after nightfall's tint, like any lamp
+  B.decor({
+    id: 'crew-beacon',
+    layer: 'overlay',
+    draw(g, s) {
+      const p = crew.picker;
+      if (!p) return;
+      const r = rig(p);
+      const X = r.X;
+      const ph = ((performance.now() / 1000) * 1.5) % 1;
+      // the beacon's light on the street, once dusk comes
+      beacon(g, s, p, r);
+      const P = B.sunPos(s.hour);
+      if (ph < 0.5 && P.e < 6) {
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const gb = g.createRadialGradient(X + 27, 165, 0, X + 27, 165, 7);
+        gb.addColorStop(0, `rgba(255,190,60,${(0.5 * clamp((6 - P.e) / 10, 0.2, 1)).toFixed(3)})`);
+        gb.addColorStop(1, 'rgba(255,190,60,0)');
+        g.fillStyle = gb;
+        g.fillRect(X + 20, 158, 14, 14);
+        g.restore();
       }
     },
   });
   function drawCone(g, x, y) {
     g.fillStyle = '#ff6a10';
-    g.fillRect(x - 1, y - 7, 3, 2);
-    g.fillRect(x - 2, y - 5, 5, 3);
+    g.fillRect(x, y - 7, 1, 1);
+    g.fillRect(x - 1, y - 6, 3, 2);
     g.fillStyle = '#f4f4f0';
-    g.fillRect(x - 2, y - 4, 5, 1);
+    g.fillRect(x - 1, y - 4, 3, 1); // the white collar
     g.fillStyle = '#ff6a10';
-    g.fillRect(x - 3, y - 2, 7, 2);
+    g.fillRect(x - 2, y - 3, 5, 2);
+    g.fillStyle = '#c04a08';
+    g.fillRect(x + 1, y - 3, 1, 2);
     g.fillStyle = '#1a1a1a';
-    g.fillRect(x - 4, y, 9, 1);
+    g.fillRect(x - 3, y - 1, 7, 1); // the base
   }
 })(window.Bookshop);

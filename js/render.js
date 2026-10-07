@@ -324,8 +324,14 @@
     px(g, '#b08a3a', 50, 22, 10, 7);
     px(g, '#8fb3c4', 51, 23, 8, 3);
     px(g, '#6f8f4f', 51, 26, 8, 2);
-    px(g, '#3a3a3a', 64, 26, 1, 20);
-    px(g, U.light ? '#f7d58a' : '#c9a26b', 61, 22, 8, 4);
+    // a brass standard lamp: a pole on a round foot under a flared shade (so it reads as a lamp, not a chimney)
+    px(g, '#8a7040', 64, 26, 1, 19);
+    px(g, '#6a5430', 62, 45, 5, 1);
+    const shadeC = U.light ? '#f7d58a' : '#c9a26b';
+    px(g, shadeC, 62, 22, 6, 1);
+    px(g, shadeC, 61, 23, 8, 2);
+    px(g, shadeC, 60, 25, 10, 1);
+    px(g, U.light ? '#ffe8b0' : '#b08a58', 60, 26, 10, 1); // its lit rim
     px(g, '#6b2f5a', 44, 28, 6, 19);
     px(g, '#7d3a6a', 44, 27, 5, 1);
     px(g, '#6b4226', 71, 41, 14, 6);
@@ -340,6 +346,7 @@
     }
     px(g, '#aaa', 76, 26, 1, 4);
     px(g, '#aaa', 80, 27, 1, 3);
+    px(g, '#7a7a84', 70, 29, 1, 1); // a glint on the set's corner
     // kitchen corner: calendar, shelf of jars, kettle, fern
     px(g, '#f4efe2', 159, 21, 8, 10);
     px(g, '#c0392b', 159, 21, 8, 2);

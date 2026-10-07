@@ -98,6 +98,8 @@
   })();
   const skyAt = (x) => SKY[clamp(Math.round(x + 200), 0, SKY.length - 1)];
   B.oppositeSkyline = skyAt;
+  B.sunShadeLine = (s, x) => (F.buildingShadow ? buildingLine(B.sun(s), x) : 999); // below this y the buildings opposite shade the front
+  B.sunCloud = (s, x) => cloudAt(s, x);
 
   /** The line below which the buildings across the road shade the front (screen y; > H means none). */
   function buildingLine(sun, x) {
@@ -542,6 +544,16 @@
     }
   }
   let reflCache = { key: '', c: null };
+  const SKY_L = [[-8, 1.5], [-6, 10], [-4, 80], [-2, 400], [0, 800], [2, 2000], [10, 5000]];
+  const skyLum = (e) => {
+    if (e <= SKY_L[0][0]) return SKY_L[0][1];
+    for (let i = 0; i < SKY_L.length - 1; i++) {
+      const [e0, l0] = SKY_L[i];
+      const [e1, l1] = SKY_L[i + 1];
+      if (e <= e1) return Math.exp(Math.log(l0) + ((e - e0) / (e1 - e0)) * (Math.log(l1) - Math.log(l0)));
+    }
+    return 5000;
+  };
   B.decor({
     id: 'sunlight-inside',
     layer: 'overlay',
@@ -620,7 +632,8 @@
           // windows is kept down so you can follow what Mabel's watching
           if (s.upstairs && s.upstairs.tv && B.tvRect) {
             const r = B.tvRect;
-            rg2.globalAlpha = 0.85;
+            // what's left of the reflection over the screen: R*Lsky / (R*Lsky + Ltv), Ltv ~150 cd/m2
+            rg2.globalAlpha = clamp(150 / (150 + 0.08 * skyLum(P.e)), 0, 1);
             rg2.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
             rg2.globalAlpha = 1;
           }
@@ -649,8 +662,10 @@
           const base = Math.max(dayK * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.85 * nightRefl); // (the flat's lamp only dims its own panes)
           // where the glass mirrors sky (~8% of 500-5000 cd/m2) it outshines the room behind: dim the room, screen the sky
           const skyMul = Math.max(0.75 * dayAmt, duskK); // the sky's image (~400 cd/m2) all but hides the room behind
-          const eveQuiet = s.upstairs && (s.upstairs.light || s.upstairs.tv) ? 1 - 0.45 * clamp((-P.e + 2) / 6, 0, 1) : 1;
-          const skyA = Math.max(base, 0.55 * dayAmt, 0.65 * duskK) * lamp * eveQuiet;
+          // in a lit flat the reflected sky takes only its physical share: R*Lsky / (R*Lsky + Lroom)
+          const Lroom = s.upstairs && s.upstairs.light ? 20 : s.upstairs && s.upstairs.tv ? 2 : 0;
+          const share = Lroom ? (0.08 * skyLum(P.e)) / (0.08 * skyLum(P.e) + Lroom) : 1;
+          const skyA = Math.min(Math.max(base, 0.55 * dayAmt, 0.65 * duskK) * lamp, P.e < 2 ? share : 1);
           if (reflCache.m) {
             if (skyMul > 0.02) {
               tg.globalCompositeOperation = 'source-over';
@@ -812,7 +827,7 @@
         D,
         col: sun.col,
         a: Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110)),
-        colGain: B.mix(sun.col, '#ffe8cc', 0.55),
+        colGain: B.mix(sun.col, '#ffc890', 0.5),
         gain: Math.min(1.5, 2.3 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain); lifted ~30% so the blade holds against the glass
         motes: true,
       };

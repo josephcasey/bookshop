@@ -326,7 +326,7 @@ async function shoot(tag, emit, report) {
   }
   // L: the street crew and the sky in the flat's windows
   if (B.crew) {
-    const sh = sheet(3, 2, 320, 180, 2);
+    const sh = sheet(3, 3, 320, 180, 2);
     const C = B.crew;
     const FL = B.oppositeStreet ? B.oppositeStreet.flyers : [];
     const reset = () => {
@@ -390,8 +390,31 @@ async function shoot(tag, emit, report) {
     for (const [gx, gy, m, dir] of [[52, 26, 0.19, 1], [74, 33, 0.123, -1], [176, 30, 0.19, 1]]) FL.push({ kind: 'car', gx, gy, m, dir, v: 0, t: 0, seed: gx / 200 });
     setTraffic([]);
     sh.put(i++, frame(), 0, 0, 'cyber night: telly on, sky reflection kept down');
-    reset();
     s.upstairs.tv = false;
+    // 7: classic dusk: an airliner's contrail lit gold-red above the earth's shadow, gulls, in the flat's windows
+    reset();
+    await scene('classic', B.sunTime(-1.5, true), {});
+    FL.push({ kind: 'plane', gx: 70, gy: 24, m: 0.00044, dir: 1, v: 0, t: 0, seed: 0.3 });
+    FL.push({ kind: 'gull', gx: 172, gy: 30, m: 0.17, dir: -1, v: 0, t: 0, seed: 0.1 });
+    FL.push({ kind: 'gull', gx: 182, gy: 27, m: 0.15, dir: -1, v: 0, t: 0, seed: 0.6 });
+    setTraffic([]);
+    sh.put(i++, frame(), 0, 0, 'classic sunset -1.5: contrail and gulls in the flat windows');
+    // 8, 9: the shop's lamps after dark: all on with Mabel at the back; then only the desk lamp
+    if (B.shopLamps) {
+      await scene('classic', 19.6, { mabelInside: true, people: false });
+      B.shopLamps.pendantL = B.shopLamps.pendantR = true;
+      s.shop.lights = true;
+      B.shopLamps.lastMain = true;
+      s.lamp = true;
+      setTraffic([]);
+      sh.put(i++, frame(), 0, 0, 'classic 19:36 shop lamps on: pools, scallops, Mabel\'s shadow');
+      B.shopLamps.pendantL = B.shopLamps.pendantR = false;
+      s.shop.lights = false;
+      B.shopLamps.lastMain = false;
+      sh.put(i++, frame(), 0, 0, 'classic 19:36 only the desk lamp: the counter pool');
+      s.lamp = false;
+    }
+    reset();
     await emit('L-crew-sky', sh.c);
   }
   // I: what single approaches bring (split screens: left ON, right OFF)

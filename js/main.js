@@ -391,6 +391,10 @@
       }
       tuner.classList.add('hidden');
       B.emit('click', s, x, y);
+      if (s.clickTaken) {
+        s.clickTaken = false; // something in the scene answered the click (a lamp switched)
+        return;
+      }
       const W = B.LAYOUT.win;
       if (x >= W.x && x < W.x + W.w && y >= W.y && y < W.y + W.h) {
         B.audio.play('knock');
