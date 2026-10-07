@@ -412,6 +412,7 @@
     const day = B.daylight(s.hour);
     const dim = (c, k = 1) => B.mix(c, '#06050c', (1 - day) * 0.6 * k);
     for (let y = 0; y < AL.bot; y++) px(g, B.mix(skyTop, skyBot, Math.min(1, y / 100)), AL.l, y, AL.r - AL.l, 1);
+    if (B.vistaGlow && B.sunPos) B.vistaGlow(g, B.sunPos(s.hour), AL.l, AL.r - AL.l, s.weather.cloud);
     // megastructures
     for (const t of TOWERS) {
       px(g, dim(t.c), t.x, t.top, t.w, 124 - t.top);

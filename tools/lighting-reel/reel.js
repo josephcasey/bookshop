@@ -262,6 +262,29 @@ async function shoot(tag, emit, report) {
     sh.put(3, frame(), 0, 0, 'classic afternoon, broken cloud: a cloud shadow sweeping across');
     await emit('H-evening', sh.c);
   }
+  // J: seasons and the reviewers' checks: Dec noon, Jun 20:00, windscreen flashes at 25 vs 10 deg, afterglow, sunrise vista
+  {
+    const sh = sheet(3, 2, 320, 180, 2);
+    const today0 = B.today;
+    const shots = [
+      ['2026-12-21', () => B.sunPos(12).noon, 'Dec 21 noon', []],
+      ['2026-06-21', () => 20, 'Jun 21 20:00', []],
+      [null, () => B.sunTime(25, true), 'sun 25 deg, car (flashes?)', [{ kind: 'car', dur: 2.8, t: 1.2, dir: 1 }]],
+      [null, () => B.sunTime(10, true), 'sun 10 deg, car (no flashes)', [{ kind: 'car', dur: 2.8, t: 1.2, dir: 1 }]],
+      [null, () => B.sunTime(-2, true), 'sun -2 deg: afterglow in the panes, Belt of Venus', []],
+      [null, () => B.sunTime(4, false), 'sunrise, sun 4 deg: backlit, alley glow', []],
+    ];
+    let i = 0;
+    for (const [date, hr, label, traffic] of shots) {
+      if (date) B.today = date;
+      await scene('classic', hr(), {});
+      s.weather.cloud = 0.15;
+      setTraffic(traffic);
+      sh.put(i++, frame(), 0, 0, `classic ${label}`);
+      B.today = today0;
+    }
+    await emit('J-seasons-checks', sh.c);
+  }
   // I: what single approaches bring (split screens: left ON, right OFF)
   if (B.lightFlags) {
     const sh = sheet(2, 2, 320, 180, 2);

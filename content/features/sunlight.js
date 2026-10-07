@@ -78,6 +78,8 @@
       }
       x += wdt;
     }
+    // a side street opens off the road behind you: a gap in the skyline where low sun gets through
+    for (let i = 0; i < 40; i++) out[310 + i] = 0;
     return out;
   })();
   const skyAt = (x) => SKY[clamp(Math.round(x + 200), 0, SKY.length - 1)];
@@ -111,9 +113,9 @@
     if (!F.cloudShadows) return 1;
     const c = clamp((((s.weather && s.weather.cloud) || 0) - 0.15) * 1.6, 0, 0.92); // share of sky covered
     if (c < 0.03) return 1;
-    const u = x - (performance.now() / 1000) * 35; // drifting at ~35 px/s
+    const u = x - (performance.now() / 1000) * 120; // cloud shadows race at ~5 m/s (120 px/s)
     const n = 0.5 + 0.25 * Math.sin(u / 900) + 0.15 * Math.sin(u / 377 + 1.7) + 0.1 * Math.sin(u / 2300 + 0.4);
-    const k = clamp((n - (1 - c)) / 0.08 + 0.5, 0, 1); // ~150 px soft edge
+    const k = clamp((n - (1 - c)) / 0.2 + 0.5, 0, 1); // a ~300 px soft edge (the sun's disc at a kilometre)
     return 1 - 0.55 * k;
   }
 
@@ -306,15 +308,19 @@
       tg.drawImage(mc, 0, 0);
       tg.globalCompositeOperation = 'source-in';
       const gr = tg.createLinearGradient(0, 10, 0, 178);
-      gr.addColorStop(0, cyber() ? '#5a4a94' : '#6676b0');
-      gr.addColorStop(0.7, cyber() ? '#6a5a98' : B.mix('#6676b0', '#8c8a90', sunOnGround));
-      gr.addColorStop(1, cyber() ? '#7a6a96' : B.mix('#6676b0', '#9a8e88', sunOnGround));
+      // an evening front faces the bright western sky: its shade is lighter and more neutral than a morning one
+      const SP = B.sunPos(s.hour);
+      const eve = !SP.morning ? clamp((14 - SP.e) / 10, 0, 1) * clamp((SP.e + 3) / 3, 0, 1) : 0;
+      const top0 = B.mix(cyber() ? '#5a4a94' : '#6676b0', cyber() ? '#7a6aa0' : '#8a8aa8', eve);
+      gr.addColorStop(0, top0);
+      gr.addColorStop(0.7, B.mix(cyber() ? '#6a5a98' : B.mix('#6676b0', '#8c8a90', sunOnGround), cyber() ? '#7a6aa0' : '#8e8ca6', eve));
+      gr.addColorStop(1, B.mix(cyber() ? '#7a6a96' : B.mix('#6676b0', '#9a8e88', sunOnGround), cyber() ? '#806e9c' : '#9690a0', eve));
       tg.fillStyle = gr;
       tg.fillRect(0, 0, W, H);
       tg.globalCompositeOperation = 'source-over';
       g.globalCompositeOperation = 'multiply';
       const contrast = sun.behind ? 0.45 : clamp(0.3 + sun.facing, 0.3, 1);
-      g.globalAlpha = Math.max(0.45 * skyLit * (1 - S * 0.3), 0.8 * S * contrast);
+      g.globalAlpha = Math.max(0.45 * skyLit * (1 - S * 0.3), 0.8 * S * contrast) * (1 - 0.25 * eve);
       g.drawImage(tc, 0, 0);
       // sun: warmth where it falls, by the angle it strikes; golden hour the most saturated minute of the day
       if (S > 0.02 && !sun.behind) {
@@ -323,6 +329,12 @@
         tg.fillRect(0, 0, W, H);
         tg.globalCompositeOperation = 'destination-out';
         tg.drawImage(mc, 0, 0);
+        {
+          const L = B.LAYOUT;
+          tg.fillRect(L.win.x, L.win.y, L.win.w, L.win.h);
+          tg.fillRect(L.doorGlass.x, L.doorGlass.y, L.doorGlass.w, L.doorGlass.h);
+          for (const u of L.upstairs) tg.fillRect(u.x, u.y, u.w, u.h);
+        }
         tg.globalCompositeOperation = 'source-over';
         const gold = sun.e < 10 ? 1 - sun.e / 10 : 0;
         g.globalCompositeOperation = 'soft-light';
@@ -340,6 +352,22 @@
         g.globalAlpha = 1;
         g.fillStyle = rgba('#ffd8a8', 0.15 * sunOnGround);
         for (const [x0, x1, y] of overhangs()) g.fillRect(x0, y, x1 - x0, 1);
+      }
+      // twilight: the front faces west, into the afterglow: peach, then rose, then the blue of blue hour
+      if (!P.morning && P.e < 2 && P.e > -9) {
+        const k = clamp((2 - P.e) / 3, 0, 1) * clamp((P.e + 9) / 3, 0, 1);
+        const col = P.e > -4 ? B.mix('#ffc0a0', '#e8a0b0', clamp(-P.e / 4, 0, 1)) : B.mix('#e8a0b0', '#7080c0', clamp((-P.e - 4) / 2, 0, 1));
+        tg.globalCompositeOperation = 'source-over';
+        tg.clearRect(0, 0, W, H);
+        tg.fillStyle = col;
+        tg.fillRect(0, 8, 280, H - 8);
+        tg.globalCompositeOperation = 'destination-out';
+        if (cyber()) for (const [x0, y0, w0, h0] of [[0, 52, 274, 21], [227, 77, 34, 12], [271, 58, 13, 26]]) tg.fillRect(x0, y0, w0, h0);
+        if (s.upstairs && s.upstairs.light) for (const u of B.LAYOUT.upstairs) tg.fillRect(u.x, u.y, u.w, u.h);
+        tg.globalCompositeOperation = 'source-over';
+        g.globalCompositeOperation = 'soft-light';
+        g.globalAlpha = 0.45 * k;
+        g.drawImage(tc, 0, 0);
       }
       // morning: light bounced off the sunlit buildings opposite warms the shaded front's lower half
       if (sun.behind && P.e > 2) {
@@ -359,8 +387,19 @@
   /** The street behind you, as seen mirrored in glass: sky above the opposite roofline (chimneys and all), the
    *  opposite facades below with their windows; sunlit in the morning, in shade in the evening. */
   function paintReflection(g, s, sun, top, rows) {
-    const [skyTop, skyBot] = B.skyByElevation ? B.skyByElevation(s.hour, cyber()) : ['#7fb2e0', '#b5d6ee'];
     const P = B.sunPos(s.hour);
+    let [skyTop, skyBot] = B.skyByElevation ? B.skyByElevation(s.hour, cyber()) : ['#7fb2e0', '#b5d6ee'];
+    if (!P.morning && P.e < 12) {
+      // the evening sky behind you is the sunset side
+      const keys = [[-8, '#1a2048', '#3a3060'], [-4, '#4a3a6a', '#a86a90'], [-1, '#8a6a9a', '#f08a70'], [2, '#9aa8d0', '#ffb070'], [12, '#7fb2e0', '#ffe0b8']];
+      const e = clamp(P.e, -8, 12);
+      let i = 0;
+      while (i < keys.length - 2 && keys[i + 1][0] <= e) i++;
+      const q = clamp((e - keys[i][0]) / (keys[i + 1][0] - keys[i][0]), 0, 1);
+      skyTop = B.mix(keys[i][1], keys[i + 1][1], q);
+      skyBot = B.mix(keys[i][2], keys[i + 1][2], q);
+    }
+    const dusk = !P.morning && P.e < 3;
     const facadeLit = P.morning && P.e > 0; // the opposite fronts face east-north-east
     const wall = cyber() ? (facadeLit ? '#7a7084' : '#4a4458') : facadeLit ? '#d8c4a8' : '#8a8090';
     for (let x = 0; x < W; x++) {
@@ -368,6 +407,7 @@
       for (let y = top; y < top + rows; y++) {
         let c;
         if (y < roof) c = B.mix(skyTop, skyBot, clamp((y - top) / Math.max(1, roof - top), 0, 1));
+        else if (dusk) c = ((x >> 2) + (y >> 2)) % 7 === 0 && y > roof + 3 ? '#e8b060' : '#16141e'; // the roofs a black silhouette, a lit window or two
         else c = ((x >> 2) + (y >> 2)) % 5 === 0 && y > roof + 3 ? B.mix(wall, '#2a2a38', 0.5) : wall; // windows across the road
         g.fillStyle = c;
         g.fillRect(x, y, 1, 1);
@@ -388,8 +428,9 @@
       if (s.owner.area === 'street') people.push(s.owner);
       const Wn = B.LAYOUT.win;
       const dayAmt = clamp((P.e + 1) / 8, 0, 1);
+      const reflAmt = clamp((P.e + 7) / 9, 0, 1); // reflections hold through twilight: the bright sky outshines a dark shop
       // the glass by day: reflection outshines the interior (single glazing reflects ~8% of a bright street)
-      if (F.glassReflection && dayAmt > 0.02) {
+      if (F.glassReflection && reflAmt > 0.02) {
         const key = `${Math.round(s.hour * 30)}|${B.theme}|${P.morning}`;
         if (reflCache.key !== key) {
           if (!reflCache.c) reflCache.c = canvas()[0];
@@ -425,7 +466,7 @@
         g.restore();
         // ...behind the street's reflection
         g.globalCompositeOperation = 'screen';
-        g.globalAlpha = 0.3 * dayAmt;
+        g.globalAlpha = 0.3 * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1);
         g.drawImage(rc2, 0, 0);
         g.globalAlpha = 1;
         g.globalCompositeOperation = 'source-over';
@@ -433,7 +474,8 @@
       if (S < 0.02 || sun.behind || sun.facing <= 0.05) return;
       // people: cooler in the shade of the buildings opposite, warmer in the sun, with a shaded side away from it
       for (const a of people) {
-        const shaded = F.buildingShadow && buildingLine(sun, a.x) < a.y - 30;
+        const shadeK = F.buildingShadow ? clamp((a.y - 38 - buildingLine(sun, a.x)) / 6 + 0.5, 0, 1) : 0;
+        const shaded = shadeK > 0.5;
         tg.globalCompositeOperation = 'source-over';
         tg.clearRect(0, 0, W, H);
         B.drawSilhouette(tg, a, a.x, a.y, 1, 1);
@@ -442,9 +484,9 @@
         tg.fillRect(0, 0, W, H);
         tg.globalCompositeOperation = 'source-over';
         g.globalCompositeOperation = shaded ? 'multiply' : 'soft-light';
-        g.globalAlpha = (shaded ? 0.35 : 0.4) * S * cloudAt(s, a.x);
+        g.globalAlpha = (shaded ? 0.35 * shadeK : 0.4 * (1 - shadeK)) * S * cloudAt(s, a.x);
         g.drawImage(tc, 0, 0);
-        if (!shaded && Math.abs(sun.phi) > 25) {
+        if (!shaded && Math.abs(sun.phi) > 25 && cloudAt(s, a.x) > 0.6) {
           // the terminator: a column of shade down the side turned away from the sun
           tg.globalCompositeOperation = 'source-over';
           tg.clearRect(0, 0, W, H);
@@ -463,12 +505,15 @@
         g.globalCompositeOperation = 'source-over';
       }
       // passing windscreens throw flashes of sun onto the shaded front at golden hour
-      if (sun.e < 14) {
-        const gold = 1 - sun.e / 14;
+      if (sun.e < 32) {
+        const gold = clamp(1 - (sun.e - 10) / 22, 0.3, 1);
         for (const ev of B.trafficEvents || []) {
           if (ev.kind === 'turn' || ev.kind === 'bike') continue;
           const k = ev.t / ev.dur;
           const x = (ev.dir > 0 ? -70 + k * 460 : 390 - k * 460) - (ev.dir > 0 ? 55 : 85) * sun.tanP;
+          const dCar = (ev.dir > 0 ? 55 : 85) / PX_PER_M; // metres from our wall
+          const xs = x + sun.tanP * 22 * PX_PER_M * 0.15;
+          if (skyAt(xs) - ((22 - dCar) / sun.cosP) * sun.tanE > 1.2) continue; // the car's in the opposite buildings' shadow
           const wob = Math.sin(ev.t * 9 + ev.seed * 6);
           if (wob < 0.2) continue; // the glass only catches the sun at the right angle, in flickers
           const y = 96 + Math.round(ev.seed * 40);
@@ -500,7 +545,14 @@
       };
       const room = Object.assign({}, kit.SHOP, { aperture: () => [lit] });
       kit.project(qg, s, src, room, ag);
-      kit.project(qg, s, Object.assign({}, src, { a: src.a * (s.upstairs.light ? 0.5 : 1) }), kit.FLAT, ag);
+      const flat = Object.assign({}, kit.FLAT, {
+        aperture: (s2) =>
+          kit.FLAT.aperture(s2).map((u) => {
+            const line = F.buildingShadow ? buildingLine(sun, u.x + u.w / 2) : H;
+            return { x: u.x, y: u.y, w: u.w, h: clamp(Math.min(u.y + u.h, line) - u.y, 0, u.h) };
+          }),
+      });
+      kit.project(qg, s, Object.assign({}, src, { a: src.a * (s.upstairs.light ? 0.5 : 1) }), flat, ag);
       for (const c of [qg, ag]) {
         c.save();
         c.globalCompositeOperation = 'destination-out';

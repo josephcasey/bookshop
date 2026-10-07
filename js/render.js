@@ -428,12 +428,41 @@
     return blocks;
   })();
 
+  /** The alley looks out ENE: low morning sun glows above its horizon; at dusk the earth's shadow rises
+   *  there under the pink Belt of Venus. */
+  B.vistaGlow = function (g, P, x, w, cloud) {
+    const hz = 84;
+    const clear = 1 - Math.min(1, cloud || 0) * 0.7;
+    if (P.morning && P.e > -6 && P.e < 25) {
+      const k = Math.min(1, (P.e + 6) / 6) * Math.min(1, (25 - P.e) / 10) * clear;
+      const gr = g.createLinearGradient(0, hz - 46, 0, hz);
+      gr.addColorStop(0, 'rgba(255,244,220,0)');
+      gr.addColorStop(1, `rgba(255,${P.e < 4 ? 200 : 236},${P.e < 4 ? 150 : 200},${(0.6 * k).toFixed(3)})`);
+      g.fillStyle = gr;
+      g.fillRect(x, hz - 46, w, 46);
+    } else if (!P.morning && P.e < 4 && P.e > -9) {
+      const k = Math.min(1, (4 - P.e) / 3) * Math.min(1, (P.e + 9) / 3) * clear;
+      const rise = Math.round(Math.min(1, Math.max(0, -P.e / 6)) * 12); // the shadow climbs as the sun sinks
+      g.globalAlpha = 0.55 * k;
+      g.fillStyle = '#e8a0b0';
+      g.fillRect(x, hz - 22 - rise, w, 10);
+      g.globalAlpha = 0.35 * k;
+      g.fillRect(x, hz - 26 - rise, w, 4);
+      g.globalAlpha = 0.6 * k;
+      g.fillStyle = '#4a4a78';
+      g.fillRect(x, hz - 12 - rise, w, 12 + rise);
+      g.globalAlpha = 1;
+    }
+  };
+
   function drawAlley(g, s, skyTop, skyBot) {
     const day = B.daylight(s.hour);
     const dim = (c, k = 1) => B.mix(c, '#1a1c2e', (1 - day) * 0.55 * k);
     // sky
     for (let y = 0; y < AL.bot; y++) px(g, B.mix(skyTop, skyBot, Math.min(1, y / 100)), AL.l, y, AL.r - AL.l, 1);
-    if (day < 0.4) for (let i = 0; i < 8; i++) px(g, 'rgba(255,255,230,0.8)', AL.l + ((i * 17) % 38), 3 + ((i * 23) % 40), 1, 1);
+    const SP = B.sunPos ? B.sunPos(s.hour) : { e: day > 0.4 ? 10 : -20, morning: false };
+    if (SP.e < -6 && s.weather.cloud < 0.7) for (let i = 0; i < 8; i++) px(g, 'rgba(255,255,230,0.8)', AL.l + ((i * 17) % 38), 3 + ((i * 23) % 40), 1, 1);
+    B.vistaGlow(g, SP, AL.l, AL.r - AL.l, s.weather.cloud);
     // distant hill, then the town climbing it
     scan(g, dim('#6f8f6a'), 84, AL.bot, (y) => AL.l, (y) => AL.r);
     for (let y = 80; y < 92; y++) px(g, dim('#7f9f78'), AL.l + Math.round((y - 80) * 0.8), y, AL.r - AL.l, 1);
