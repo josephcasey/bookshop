@@ -1031,6 +1031,7 @@
 
   // ---------- the colour grade and bloom over the whole frame ----------
   let bright = null;
+  let hazeRows = null;
   let brightG = null;
   let brightImg = null;
   let blur1 = null;
@@ -1061,11 +1062,30 @@
     const d = img.data;
     const bd = brightImg.data;
     const nightish = day < 0.5;
-    const haze = 0.16 * day; // by day the city sits under a pale smog
+    // by day the city sits under smog, and the smog follows the sun: cool and backlit in the morning, white and flat
+    // at noon, a heavy amber band low on the front through the afternoon as the sun drops into it
+    const SP = B.sunPos ? B.sunPos(s.hour) : { e: 30, morning: false };
+    const hz = hazeRows || (hazeRows = new Float32Array(B.H * 4));
+    {
+      const noon = Math.min(1, Math.max(0, (SP.e - 20) / 25));
+      const aft = !SP.morning ? Math.min(1, Math.max(0, (35 - SP.e) / 20)) * Math.min(1, Math.max(0, (SP.e + 2) / 4)) : 0;
+      for (let y = 0; y < B.H; y++) {
+        const low = Math.min(1, Math.max(0, (y - 70) / 100));
+        let cr = 168, cg = 160, cb = 170, k = 0.16;
+        if (SP.morning) [cr, cg, cb, k] = [150 + 30 * (1 - y / B.H), 162, 190, 0.18];
+        cr += (205 - cr) * noon; cg += (202 - cg) * noon; cb += (200 - cb) * noon; k += 0.08 * noon;
+        const am = aft * low;
+        cr += (255 - cr) * am; cg += (170 - cg) * am; cb += (90 - cb) * am; k += 0.16 * am;
+        hz[y * 4] = cr; hz[y * 4 + 1] = cg; hz[y * 4 + 2] = cb; hz[y * 4 + 3] = k * day;
+      }
+    }
+    const rowLen = B.W * 4;
     for (let i = 0; i < d.length; i += 4) {
-      let r = d[i] + (168 - d[i]) * haze;
-      let gg = d[i + 1] + (160 - d[i + 1]) * haze;
-      let b = d[i + 2] + (170 - d[i + 2]) * haze;
+      const ry = ((i / rowLen) | 0) * 4;
+      const haze = hz[ry + 3];
+      let r = d[i] + (hz[ry] - d[i]) * haze;
+      let gg = d[i + 1] + (hz[ry + 1] - d[i + 1]) * haze;
+      let b = d[i + 2] + (hz[ry + 2] - d[i + 2]) * haze;
       const mx = Math.max(r, gg, b);
       const sat = mx - Math.min(r, gg, b);
       const lum = r * 0.3 + gg * 0.59 + b * 0.11;

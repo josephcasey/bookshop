@@ -264,7 +264,7 @@ async function shoot(tag, emit, report) {
   }
   // J: seasons and the reviewers' checks: Dec noon, Jun 20:00, windscreen flashes at 25 vs 10 deg, afterglow, sunrise vista
   {
-    const sh = sheet(3, 2, 320, 180, 2);
+    const sh = sheet(3, 3, 320, 180, 2);
     const today0 = B.today;
     const shots = [
       ['2026-12-21', () => B.sunPos(12).noon, 'Dec 21 noon', []],
@@ -273,14 +273,23 @@ async function shoot(tag, emit, report) {
       [null, () => B.sunTime(10, true), 'sun 10 deg, car (no flashes)', [{ kind: 'car', dur: 2.8, t: 1.2, dir: 1 }]],
       [null, () => B.sunTime(-2, true), 'sun -2 deg: afterglow in the panes, Belt of Venus', []],
       [null, () => B.sunTime(4, false), 'sunrise, sun 4 deg: backlit, alley glow', []],
+      [null, () => B.sunTime(6, true), 'sun 6 deg: a walker standing in the gold blade', [], 'walker'],
+      [null, () => B.sunPos(12).noon, 'cyber noon: white flat smog', [], 'cyber'],
+      [null, () => B.sunTime(15, true), 'cyber late afternoon: amber smog low', [], 'cyber'],
     ];
     let i = 0;
-    for (const [date, hr, label, traffic] of shots) {
+    for (const [date, hr, label, traffic, opt] of shots) {
       if (date) B.today = date;
-      await scene('classic', hr(), {});
+      await scene(opt === 'cyber' ? 'cyber' : 'classic', hr(), {});
       s.weather.cloud = 0.15;
       setTraffic(traffic);
-      sh.put(i++, frame(), 0, 0, `classic ${label}`);
+      if (opt === 'walker') {
+        const sun = B.sun(s);
+        const bx = 130 - sun.tanP * 22 * 23; // the side-street gap, seen along the sun's slant
+        const p = s.npcs.find((n) => n.area === 'street' && !n.hidden);
+        if (p) Object.assign(p, { x: Math.round(Math.max(20, Math.min(260, bx))) });
+      }
+      sh.put(i++, frame(), 0, 0, `${opt === 'cyber' ? 'cyber' : 'classic'} ${label}`);
       B.today = today0;
     }
     await emit('J-seasons-checks', sh.c);

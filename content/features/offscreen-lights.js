@@ -915,7 +915,37 @@
         g.drawImage(hc, 0, 0);
         g.globalAlpha = 1;
       }
-      if (rcv.reveal && !lit && F.reveal) {
+      if (src.gain && rcv.reveal && F.reveal && mainCanvas && rg) {
+        // sunlight: the surfaces' own colour times the light (albedo x E), so the books keep their saturation:
+        // the scene as it is now, multiplied by the patch, added back on top
+        rg.globalCompositeOperation = 'source-over';
+        rg.clearRect(0, 0, W, H);
+        rg.save();
+        if (RB) {
+          rg.beginPath();
+          rg.rect(RB.x, RB.y, RB.w, RB.h);
+          rg.clip();
+        }
+        rg.drawImage(mainCanvas, 0, 0);
+        rg.globalCompositeOperation = 'multiply';
+        rg.drawImage(pc, 0, 0);
+        rg.globalCompositeOperation = 'destination-in';
+        rg.drawImage(pc, 0, 0);
+        rg.restore();
+        rg.globalCompositeOperation = 'source-over';
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = Math.min(1, src.gain);
+        g.drawImage(rc, 0, 0);
+        if (src.gain > 1) {
+          g.globalAlpha = Math.min(1, src.gain - 1);
+          g.drawImage(rc, 0, 0);
+        }
+        gAdd.globalCompositeOperation = 'lighter';
+        gAdd.globalAlpha = 0.08;
+        gAdd.drawImage(pc, 0, 0);
+        g.globalAlpha = gAdd.globalAlpha = 1;
+        g.globalCompositeOperation = gAdd.globalCompositeOperation = 'source-over';
+      } else if (rcv.reveal && !lit && F.reveal) {
         // while a strong beam is in, the rest of the room drops into deep cool shadow, so the lit patch reads
         if (src.aim != null && src.a > 0.15) {
           // light bounced off the lit patch fills the room a little (in the beam's colour)

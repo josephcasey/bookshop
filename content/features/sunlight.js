@@ -374,11 +374,12 @@
       // twilight: the whole sky is dimmer at low sun, so the front darkens and the lamps and lit windows gain on it
       {
         const u = clamp((P.e + 6) / 26, 0, 1);
-        const dark = (1 - u * u * (3 - 2 * u)) * (1 - B.nightness(s.hour));
+        const dark = (1 - u * u * (3 - 2 * u)) * (1 - 0.6 * B.nightness(s.hour));
         if (dark > 0.02) {
           tg.globalCompositeOperation = 'source-over';
           tg.clearRect(0, 0, W, H);
-          tg.fillStyle = cyber() ? '#9a90c0' : '#9aa0c0';
+          const below = clamp(-P.e / 4, 0, 1);
+          tg.fillStyle = P.morning ? (cyber() ? '#9098c8' : '#a0a8c8') : B.mix(cyber() ? '#9a90c0' : '#9aa0c0', '#7a6890', below);
           tg.fillRect(0, 0, W, H);
           tg.globalCompositeOperation = 'destination-out';
           if (cyber()) for (const [x0, y0, w0, h0] of [[0, 52, 274, 21], [227, 77, 34, 12], [271, 58, 13, 26]]) tg.fillRect(x0, y0, w0, h0);
@@ -386,7 +387,7 @@
           if (s.shop.lights) tg.fillRect(Wn0.x, Wn0.y, Wn0.w, Wn0.h);
           tg.globalCompositeOperation = 'source-over';
           g.globalCompositeOperation = 'multiply';
-          g.globalAlpha = 0.52 * dark;
+          g.globalAlpha = Math.min(0.85, (0.52 + 0.3 * clamp(-P.e / 4, 0, 1)) * dark);
           g.drawImage(tc, 0, 0);
         }
       }
@@ -422,6 +423,18 @@
         g.fillStyle = rgba('#ffd8a8', 0.15 * sunOnGround);
         for (const [x0, x1, y] of overhangs()) g.fillRect(x0, y, x1 - x0, 1);
       }
+      // morning, sun behind the building: a 1 px rim of sunlight catches the top of the cornice
+      if (P.morning && sun.behind && P.e > 0 && P.e < 40) {
+        const k = clamp(P.e / 3, 0, 1) * clamp((40 - P.e) / 15, 0, 1) * cloudAt(s, 140);
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = 0.45 * k;
+        g.fillStyle = '#ffd8a0';
+        g.fillRect(0, 8, 280, 1);
+        g.globalAlpha = 0.2 * k;
+        g.fillRect(0, 9, 280, 1);
+        g.globalAlpha = 1;
+        g.globalCompositeOperation = 'source-over';
+      }
       // twilight: the front faces west, into the afterglow: peach, then rose, then the blue of blue hour
       if (!P.morning && P.e < 2 && P.e > -9) {
         const k = clamp((2 - P.e) / 3, 0, 1) * clamp((P.e + 9) / 3, 0, 1);
@@ -435,7 +448,7 @@
         if (s.upstairs && s.upstairs.light) for (const u of B.LAYOUT.upstairs) tg.fillRect(u.x, u.y, u.w, u.h);
         tg.globalCompositeOperation = 'source-over';
         g.globalCompositeOperation = 'soft-light';
-        g.globalAlpha = 0.45 * k;
+        g.globalAlpha = 0.25 * k;
         g.drawImage(tc, 0, 0);
       }
       // morning: light bounced off the sunlit buildings opposite warms the shaded front's lower half
@@ -455,7 +468,7 @@
   let lay = null;
   /** The street behind you, as seen mirrored in glass: sky above the opposite roofline (chimneys and all), the
    *  opposite facades below with their windows; sunlit in the morning, in shade in the evening. */
-  function paintReflection(g, s, sun, top, rows) {
+  function paintReflection(g, s, sun, top, rows, skyMask) {
     const P = B.sunPos(s.hour);
     let [skyTop, skyBot] = B.skyByElevation ? B.skyByElevation(s.hour, cyber()) : ['#7fb2e0', '#b5d6ee'];
     if (!P.morning && P.e < 12) {
@@ -472,14 +485,16 @@
     const facadeLit = P.morning && P.e > 0; // the opposite fronts face east-north-east
     const wall = cyber() ? (facadeLit ? '#7a7084' : '#4a4458') : facadeLit ? '#d8c4a8' : '#8a8090';
     for (let x = 0; x < W; x++) {
-      const roof = top + rows - (skyAt(W - x) - 8) * 6; // nearer the top of the glass, the higher the roofs
+      // nearer the top of the glass, the higher the roofs; seen from across the road at dusk the skyline crosses mid-pane
+      const roof = skyAt(W - x) < 1 ? top + rows : dusk ? top + rows * 0.5 - (skyAt(W - x) - 9.7) * 4 : top + rows - (skyAt(W - x) - 8) * 6;
       for (let y = top; y < top + rows; y++) {
         let c;
         if (y < roof) c = B.mix(skyTop, skyBot, clamp((y - top) / Math.max(1, roof - top), 0, 1));
-        else if (dusk) c = ((x >> 2) + (y >> 2)) % 7 === 0 && y > roof + 3 ? '#e8b060' : '#16141e'; // the roofs a black silhouette, a lit window or two
+        else if (dusk) c = ((x >> 2) * 7 + (y >> 2) * 13) % 29 === 0 && (x & 3) < 2 && (y & 3) < 2 && y > roof + 3 ? '#a87840' : '#16141e'; // the roofs a black silhouette, a lit window or two
         else c = ((x >> 2) + (y >> 2)) % 5 === 0 && y > roof + 3 ? B.mix(wall, '#2a2a38', 0.5) : wall; // windows across the road
         g.fillStyle = c;
         g.fillRect(x, y, 1, 1);
+        if (skyMask && y < roof) skyMask.fillRect(x, y, 1, 1);
       }
     }
   }
@@ -505,10 +520,14 @@
           if (!reflCache.c) reflCache.c = canvas()[0];
           const rgx = reflCache.c.getContext('2d');
           rgx.clearRect(0, 0, W, H);
-          paintReflection(rgx, s, sun, Wn.y, Wn.h);
-          for (const u of B.LAYOUT.upstairs) paintReflection(rgx, s, sun, u.y, u.h);
+          if (!reflCache.m) reflCache.m = canvas()[0];
+          const mgx = reflCache.m.getContext('2d');
+          mgx.clearRect(0, 0, W, H);
+          mgx.fillStyle = '#000';
+          paintReflection(rgx, s, sun, Wn.y, Wn.h, mgx);
+          for (const u of B.LAYOUT.upstairs) paintReflection(rgx, s, sun, u.y, u.h, mgx);
           const Dg = B.LAYOUT.doorGlass;
-          paintReflection(rgx, s, sun, Dg.y, Dg.h);
+          paintReflection(rgx, s, sun, Dg.y, Dg.h, mgx);
           reflCache.key = key;
         }
         rg2.globalCompositeOperation = 'source-over';
@@ -539,7 +558,27 @@
         // ...behind the street's reflection
         g.globalCompositeOperation = 'screen';
         const lampFade = 1 - 0.6 * clamp((-P.e - 2) / 4, 0, 1);
-        g.globalAlpha = 0.3 * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1) * (s.upstairs && s.upstairs.light ? lampFade : 1);
+        const lamp = s.upstairs && s.upstairs.light ? lampFade : 1;
+        // at dusk the burning western sky (~500 cd/m2) mirrors at 8%: it outshines a lamp-lit room above the black
+        // roofline, while below it the room shows through
+        const duskK = !P.morning ? clamp((3 - P.e) / 3, 0, 1) * clamp((P.e + 8) / 2, 0, 1) : 0;
+        if (duskK > 0.02 && reflCache.m) {
+          tg.globalCompositeOperation = 'source-over';
+          tg.clearRect(0, 0, W, H);
+          tg.drawImage(reflCache.m, 0, 0);
+          tg.globalCompositeOperation = 'destination-in';
+          tg.drawImage(rc2, 0, 0);
+          tg.globalCompositeOperation = 'source-in';
+          tg.fillStyle = '#808080';
+          tg.fillRect(0, 0, W, H);
+          tg.globalCompositeOperation = 'source-over';
+          g.globalCompositeOperation = 'multiply';
+          g.globalAlpha = duskK * lamp;
+          g.drawImage(tc, 0, 0);
+          g.globalCompositeOperation = 'screen';
+        }
+        const base = 0.3 * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1) * lamp;
+        g.globalAlpha = clamp(base + duskK * (0.65 * reflAmt * lamp - base), 0, 1);
         g.drawImage(rc2, 0, 0);
         g.globalAlpha = 1;
         g.globalCompositeOperation = 'source-over';
@@ -636,16 +675,24 @@
         y: 110 - (D * sun.tanE) / sun.cosP,
         D,
         col: sun.col,
-        a: Math.min(0.6, 0.7 * S * sun.facing * cloudAt(s, 110)), // capped: the spines keep their colour
+        a: Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110)),
+        gain: Math.min(1.2, 1.8 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain)
         motes: true,
       };
       const room = Object.assign({}, kit.SHOP, { aperture: () => strips });
       kit.project(qg, s, src, room, ag);
       const flat = Object.assign({}, kit.FLAT, {
         aperture: (s2) =>
-          kit.FLAT.aperture(s2).map((u) => {
-            const line = F.buildingShadow ? buildingLine(sun, u.x + u.w / 2) : H;
-            return { x: u.x, y: u.y, w: u.w, h: clamp(Math.min(u.y + u.h, line) - u.y, 0, u.h) };
+          kit.FLAT.aperture(s2).flatMap((u) => {
+            // traced per 4 px column, so the bar lights just the strip of pane it crosses
+            const out = [];
+            for (let x = u.x; x < u.x + u.w; x += 4) {
+              const w = Math.min(4, u.x + u.w - x);
+              const line = F.buildingShadow ? buildingLine(sun, x + w / 2) : H;
+              const h = clamp(Math.round(line) - u.y, 0, u.h);
+              if (h > 0) out.push({ x, y: u.y, w, h });
+            }
+            return out;
           }),
       });
       kit.project(qg, s, Object.assign({}, src, { a: src.a * (s.upstairs.light ? 0.5 : 1) }), flat, ag);
