@@ -290,7 +290,8 @@
     const day = B.daylight(s.hour);
     const se = B.sunPos ? B.sunPos(s.hour).e : -20;
     // stars once the sun is 6 degrees down: the first one alone, then the rest
-    if (se < -6 && s.weather.cloud < 0.7) for (const [x, y, i] of STARS) if ((se < -8 || i === 7) && Math.floor(s.simT * 0.7 + i) % 7) px(g, 'rgba(255,255,230,0.8)', x, y);
+    // Venus alone from sunset, the brightest stars at -5 deg, the rest below -8
+    if (se < 0 && s.weather.cloud < 0.7) for (const [x, y, i] of STARS) if ((se < -8 || i === 7 || (se < -5 && i % 4 === 0)) && (i === 7 || Math.floor(s.simT * 0.7 + i) % 7)) px(g, i === 7 && se > -5 ? 'rgba(255,250,235,0.95)' : 'rgba(255,255,230,0.8)', x, y);
     const cc = day > 0.3 ? 'rgba(255,255,255,0.55)' : 'rgba(80,90,120,0.5)';
     const n = 2 + Math.round(s.weather.cloud * 4);
     for (let i = 0; i < n; i++) {
@@ -461,7 +462,7 @@
     // sky
     for (let y = 0; y < AL.bot; y++) px(g, B.mix(skyTop, skyBot, Math.min(1, y / 100)), AL.l, y, AL.r - AL.l, 1);
     const SP = B.sunPos ? B.sunPos(s.hour) : { e: day > 0.4 ? 10 : -20, morning: false };
-    if (SP.e < -6 && s.weather.cloud < 0.7) for (let i = 0; i < 8; i++) px(g, 'rgba(255,255,230,0.8)', AL.l + ((i * 17) % 38), 3 + ((i * 23) % 40), 1, 1);
+    if (SP.e < -8 && s.weather.cloud < 0.7) for (let i = 0; i < 8; i++) px(g, 'rgba(255,255,230,0.8)', AL.l + ((i * 17) % 38), 3 + ((i * 23) % 40), 1, 1);
     B.vistaGlow(g, SP, AL.l, AL.r - AL.l, s.weather.cloud);
     // distant hill, then the town climbing it
     scan(g, dim('#6f8f6a'), 84, AL.bot, (y) => AL.l, (y) => AL.r);
