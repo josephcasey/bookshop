@@ -230,6 +230,21 @@
       }
     }
     for (const ev of B.trafficEvents || []) if (ev.kind !== 'turn') vehicleShadow(mg, ev, sun);
+    // raking light on the brickwork: each course overhangs the mortar a little, so when the sun is high the bed joints
+    // shade, and when it comes in from the side the head joints do; square-on, the wall goes flat
+    if (!cyber()) {
+      const bed = clamp((sun.e - 8) / 40, 0, 0.7);
+      const head = clamp((Math.abs(sun.phi) - 10) / 50, 0, 0.7);
+      if (bed > 0.02) {
+        mg.fillStyle = `rgba(0,0,0,${bed.toFixed(3)})`;
+        for (let row = 0; 13 + row * 5 < 53; row++) mg.fillRect(0, 13 + row * 5 + 4, 274, 1);
+      }
+      if (head > 0.02) {
+        mg.fillStyle = `rgba(0,0,0,${head.toFixed(3)})`;
+        for (let row = 0; 13 + row * 5 < 53; row++) for (let x = (row % 2 ? -5 : 0) + 9; x < 274; x += 10) mg.fillRect(x, 13 + row * 5, 1, 4);
+      }
+      mg.fillStyle = '#000';
+    }
     // the buildings across the road: their shadow climbs the front as the sun goes down; the sun's 0.5 deg disc
     // blurs its edge over ~6 px (a 2x2 checker in the middle of that ramp)
     if (F.buildingShadow) {
@@ -498,4 +513,43 @@
       g.globalCompositeOperation = 'source-over';
     },
   });
+
+  if (B.catBehaviour) {
+    /** Where the sun falls on the window sill (the cat's favourite spot), or null. */
+    const sunnySill = (s) => {
+      const sun = B.sun(s);
+      if (!F.sun || sun.strength < 0.3 || sun.behind || sun.facing < 0.2 || sun.e > 34) return null;
+      if (F.buildingShadow && buildingLine(sun, 130) < 140) return null; // the buildings opposite have it in shade
+      if (cloudAt(s, 130) < 0.8) return null;
+      return clamp(130 - 40 * sun.tanP, 76, 184); // sun from the right lands further left
+    };
+    B.catBehaviour({
+      id: 'sunbathe',
+      weight: (s) => (sunnySill(s) != null ? 9 : 0),
+      *run(s, cat) {
+        let x = sunnySill(s);
+        if (x == null) return;
+        yield* cat.goTo('sill', x);
+        cat.pose = 'sit';
+        yield cat.hold('stretch', 1.5);
+        cat.pose = 'loaf';
+        yield 2;
+        cat.pose = 'sleep';
+        // dozing in the warmth, shuffling along to stay in it as the patch creeps across the sill
+        for (let t = 0; t < 120; t += 4) {
+          yield 4;
+          const nx = sunnySill(s);
+          if (nx == null) break;
+          if (Math.abs(nx - cat.x) > 6) {
+            yield* cat.goTo('sill', nx);
+            cat.pose = 'loaf';
+            yield 1;
+            cat.pose = 'sleep';
+          }
+        }
+        cat.pose = 'sit';
+        yield cat.hold('groom', 2);
+      },
+    });
+  }
 })(window.Bookshop);

@@ -245,6 +245,15 @@
       return (realNow() - t0) / n;
     };
     const base = renderOnce();
+    // salience: changes count more where they fall on edges and shapes (a shadow's silhouette), less on flat fills
+    const lum = new Float32Array(W * H);
+    for (let i = 0, j = 0; j < lum.length; i += 4, j++) lum[j] = 0.3 * base[i] + 0.59 * base[i + 1] + 0.11 * base[i + 2];
+    const edge = new Float32Array(W * H);
+    for (let y = 1; y < H - 1; y++)
+      for (let x = 1; x < W - 1; x++) {
+        const j = y * W + x;
+        edge[j] = Math.min(1, (Math.abs(lum[j + 1] - lum[j - 1]) + Math.abs(lum[j + W] - lum[j - W])) / 80);
+      }
     timed(4); // warm up
     const baseMs = timed(16);
     const rows = [];
@@ -255,11 +264,19 @@
       const altMs = timed(16);
       flags[key] = was;
       let diff = 0;
-      for (let i = 0; i < base.length; i += 4) if (Math.abs(base[i] - alt[i]) + Math.abs(base[i + 1] - alt[i + 1]) + Math.abs(base[i + 2] - alt[i + 2]) > 30) diff++;
+      let sal = 0;
+      for (let i = 0, j = 0; i < base.length; i += 4, j++) {
+        const dE = Math.abs(base[i] - alt[i]) + Math.abs(base[i + 1] - alt[i + 1]) + Math.abs(base[i + 2] - alt[i + 2]);
+        if (dE > 30) diff++;
+        // the change's own edges count too: a new shadow's outline is where the eye goes
+        const altEdge = j % W > 0 && j % W < W - 1 ? Math.min(1, Math.abs(0.3 * (alt[i + 4] - alt[i - 4]) + 0.59 * (alt[i + 5] - alt[i - 3]) + 0.11 * (alt[i + 6] - alt[i - 2])) / 80) : 0;
+        sal += Math.min(dE, 180) * (0.25 + Math.max(edge[j], altEdge));
+      }
       const impact = (100 * diff) / (W * H);
+      const salience = sal / (W * H * 0.9);
       // the cost of having it on: (time with it on) - (time with it off)
       const cost = was ? baseMs - altMs : altMs - baseMs;
-      rows.push({ key, name, on: was, impact, cost });
+      rows.push({ key, name, on: was, impact, salience, cost });
       report(`${name}...`);
       await new Promise((r) => setTimeout(r, 0));
     }
@@ -290,7 +307,7 @@
       <div class="presets"><button id="labCompareOff" class="on">Off</button><button id="labSwap">Swap sides</button></div>
       <h3>Approaches</h3><ul id="labList"></ul>
       <h3>Benchmark</h3>
-      <p class="hint">For the current scenario: how much of the picture each approach changes (impact) and what it costs per frame.</p>
+      <p class="hint">For the current scenario: how much of the picture each approach changes (impact), how much of that lands on shapes and edges the eye reads (salience), and what it costs per frame.</p>
       <div class="presets"><button id="labBench">Run benchmark</button></div>
       <div id="labResults"></div>`;
     document.body.appendChild(panel);
@@ -342,8 +359,8 @@
       const res = await benchmark((msg) => (out.textContent = `Measuring ${msg}`));
       const sc = lab.scenario ? lab.scenario[0] : 'current moment';
       out.innerHTML = `<p class="hint">${sc}: frame ${res.frameMs.toFixed(1)} ms with everything as set.</p>
-        <table><tr><th>Approach</th><th>Impact</th><th>Cost</th></tr>${res.rows
-          .map((r) => `<tr class="${r.on ? '' : 'offrow'}"><td>${r.name}${r.on ? '' : ' (off)'}</td><td><span class="bar" style="width:${Math.min(60, r.impact * 1.2)}px"></span> ${r.impact.toFixed(1)}%</td><td>${r.cost >= 0 ? '+' : ''}${r.cost.toFixed(2)} ms</td></tr>`)
+        <table><tr><th>Approach</th><th>Impact</th><th>Salience</th><th>Cost</th></tr>${res.rows
+          .map((r) => `<tr class="${r.on ? '' : 'offrow'}"><td>${r.name}${r.on ? '' : ' (off)'}</td><td><span class="bar" style="width:${Math.min(60, r.impact * 1.2)}px"></span> ${r.impact.toFixed(1)}%</td><td>${r.salience.toFixed(1)}</td><td>${r.cost >= 0 ? '+' : ''}${r.cost.toFixed(2)} ms</td></tr>`)
           .join('')}</table>`;
     });
     btn.addEventListener('click', () => panel.classList.toggle('hidden'));
