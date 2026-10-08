@@ -209,7 +209,7 @@
     arabesque(o) {
       o.band(o.legC, o.frontLeg, o.lw, o.legTop, o.fy - 2 - o.legTop, false);
       o.shoe(o.frontLeg - (o.fd > 0 ? 0 : 2), o.fy - 2, 5);
-      diag(o, o.lit(o.legC, 2), o.cx - 2 * o.fd, o.legTop + 1, o.cx - 15 * o.fd, o.legTop - 7, 3); // a 45-degree line
+      diag(o, o.legC, o.cx - 3 * o.fd, o.legTop + 1, o.cx - 15 * o.fd, o.legTop - 7, 3); // a 45-degree line, from behind the skirt
       point(o, o.cx - 17 * o.fd, o.legTop - 8);
     },
     // a pirouette: on one leg, the other drawn up to the knee (retire)
@@ -250,8 +250,20 @@
    *  the hand positions are moved along the shortest arc around the shoulder for sweeping arm paths. */
   const ease = (k) => k * k * (3 - 2 * k);
   function keyed(keys, dur, opts = {}) {
-    const lerp2 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
-    const arm = (A, Bm, k) => [lerp2(A[0], Bm[0], k), lerp2(A[1], Bm[1], k)].map(([x, y]) => [Math.round(x), Math.round(y)]);
+    const pol = ([x, y]) => [Math.hypot(x, y), Math.atan2(y, x)];
+    const angLerp = (a, b, k) => a + ((((b - a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) * k);
+    const pLerp = (P, Q, k) => {
+      const [r1, a1] = pol(P);
+      const [r2, a2] = pol(Q);
+      const r = r1 + (r2 - r1) * k;
+      const an = angLerp(a1, a2, k);
+      return [r * Math.cos(an), r * Math.sin(an)];
+    };
+    const arm = (A, Bm, k) => {
+      const e = pLerp(A[0], Bm[0], k); // the elbow swings around the shoulder
+      const fa = pLerp([A[1][0] - A[0][0], A[1][1] - A[0][1]], [Bm[1][0] - Bm[0][0], Bm[1][1] - Bm[0][1]], k); // the forearm around the elbow
+      return [e, [e[0] + fa[0], e[1] + fa[1]]];
+    };
     const fn = (t, pt = t) => {
       let u = opts.once ? Math.min(pt, dur - 1e-3) : ((t % dur) + dur) % dur;
       let i = 0;
@@ -264,6 +276,7 @@
       const spec = Object.assign({}, opts.base || {}, { f: arm(A.f, Bk.f, k), b: arm(A.b, Bk.b, k) });
       spec.bob = Math.round((A.bob || 0) + ((Bk.bob || 0) - (A.bob || 0)) * k);
       spec.headDy = Math.round((A.headDy || 0) + ((Bk.headDy || 0) - (A.headDy || 0)) * k);
+      spec.headDx = Math.round((A.headDx || 0) + ((Bk.headDx || 0) - (A.headDx || 0)) * k);
       if (A.legs) spec.legs = A.legs;
       if (A.item || opts.item) spec.item = A.item || opts.item;
       return spec;
@@ -273,28 +286,50 @@
   }
   B.keyedPose = keyed;
 
+  // the island strum, per bar of 4 beats (0.52 s each): [from beat, to beat, from y, to y]
+  const UKE_HAND = [[0, 0.2, 9, 12], [0.2, 0.9, 12, 9], [1.0, 1.2, 9, 12], [1.6, 1.75, 12, 9], [2.2, 2.4, 9, 12], [2.6, 2.75, 12, 9], [3.0, 3.2, 9, 12], [3.6, 3.75, 12, 9]];
+  const UKE_CHORD_X = [8, 8, 8, 8, 9, 9, 8, 8, 8, 8, 9, 9, 8, 8, 8, 8]; // C C A7 A7 Dm7 Dm7 G7 G7 C C F Fm G7 G7 C C
+  function ukeSpec(t, standing) {
+    const beat = (((t / 0.52) % 32) + 32) % 32;
+    const b4 = beat % 4;
+    let y = 9;
+    for (let i = 0; i < UKE_HAND.length; i++) {
+      const [a0, a1, y0, y1] = UKE_HAND[i];
+      if (b4 >= a0 && b4 < a1) {
+        y = Math.round(y0 + ((y1 - y0) * (b4 - a0)) / (a1 - a0));
+        break;
+      }
+      const next = UKE_HAND[i + 1];
+      if (b4 >= a1 && (!next || b4 < next[0])) y = y1;
+    }
+    const fx = UKE_CHORD_X[Math.floor(beat / 2) % 16];
+    const spec = { f: [[2, 7], [0, y]], b: [[-3, 4], [-fx, 0]], item: 'uke' };
+    if (standing) spec.bob = (b4 < 0.25 || (b4 >= 2 && b4 < 2.25)) ? 1 : 0; // a nod on 1 and 3
+    return spec;
+  }
+
   const POSES = {
     // ---------- ballet (positions from the dance consultant; timing and easing from the animation consultant) ----------
     // arm positions, front arm (the back arm mirrors x): bras bas, first, fifth (framing the head), second
     // at the barre: the barre hand resting on the counter top, the outside arm in second
     barreplie: keyed(
       [
-        { t: 0, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 1.5, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 3 },
-        { t: 1.8, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 3 },
-        { t: 3.0, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 0 },
+        { t: 0, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 0, headDy: -1 },
+        { t: 1.5, f: [[4, 6], [9, 11]], b: [[-6, 3], [-10, 6]], bob: 4 },
+        { t: 1.8, f: [[4, 6], [9, 11]], b: [[-6, 3], [-10, 6]], bob: 4 },
+        { t: 3.0, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], bob: 0, headDy: -1 },
       ],
       3.3,
     ),
     // ...the outside arm travelling bras bas, first, fifth, second
     barrepdb: keyed(
       [
-        { t: 0, f: [[4, 6], [9, 11]], b: [[-2, 8], [-1, 13]], hold: true },
-        { t: 0.9, f: [[4, 6], [9, 11]], b: [[-2, 8], [-1, 13]] },
-        { t: 1.5, f: [[4, 6], [9, 11]], b: [[-5, 5], [-2, 10]], hold: true },
-        { t: 2.4, f: [[4, 6], [9, 11]], b: [[-5, 5], [-2, 10]] },
-        { t: 3.0, f: [[4, 6], [9, 11]], b: [[-4, -6], [-1, -12]], headDy: -1, hold: true },
-        { t: 3.9, f: [[4, 6], [9, 11]], b: [[-4, -6], [-1, -12]], headDy: -1, ease: 'out' },
+        { t: 0, f: [[4, 6], [9, 11]], b: [[-1, 8], [2, 13]], hold: true },
+        { t: 0.9, f: [[4, 6], [9, 11]], b: [[-1, 8], [2, 13]] },
+        { t: 1.5, f: [[4, 6], [9, 11]], b: [[-4, 6], [3, 9]], hold: true },
+        { t: 2.4, f: [[4, 6], [9, 11]], b: [[-4, 6], [3, 9]] },
+        { t: 3.0, f: [[4, 6], [9, 11]], b: [[-3, -7], [3, -12]], headDy: -1, hold: true },
+        { t: 3.9, f: [[4, 6], [9, 11]], b: [[-3, -7], [3, -12]], headDy: -1, ease: 'out' },
         { t: 4.5, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], hold: true },
         { t: 5.4, f: [[4, 6], [9, 11]], b: [[-6, 1], [-11, 3]], ease: 'in' },
       ],
@@ -324,8 +359,8 @@
     grandplie: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 2.8, f: [[5, 5], [2, 10]], b: [[-5, 5], [-2, 10]], bob: 5 },
-        { t: 3.2, f: [[5, 5], [2, 10]], b: [[-5, 5], [-2, 10]], bob: 5 },
+        { t: 2.8, f: [[4, 6], [-3, 9]], b: [[-4, 6], [3, 9]], bob: 5 },
+        { t: 3.2, f: [[4, 6], [-3, 9]], b: [[-4, 6], [3, 9]], bob: 5 },
         { t: 6.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
       6.0,
@@ -334,49 +369,65 @@
     // port de bras: bras bas, first, fifth (the head lifting after the hands), second; 1.5 s a position
     portdebras: keyed(
       [
-        { t: 0, f: [[2, 8], [1, 13]], b: [[-2, 8], [-1, 13]], hold: true },
-        { t: 0.9, f: [[2, 8], [1, 13]], b: [[-2, 8], [-1, 13]] },
-        { t: 1.5, f: [[5, 5], [2, 10]], b: [[-5, 5], [-2, 10]], hold: true },
-        { t: 2.4, f: [[5, 5], [2, 10]], b: [[-5, 5], [-2, 10]] },
-        { t: 3.0, f: [[4, -6], [1, -12]], b: [[-4, -6], [-1, -12]], headDy: -1, hold: true },
-        { t: 3.9, f: [[4, -6], [1, -12]], b: [[-4, -6], [-1, -12]], headDy: -1, ease: 'out' },
+        { t: 0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], hold: true },
+        { t: 0.9, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]] },
+        { t: 1.5, f: [[4, 6], [-3, 9]], b: [[-4, 6], [3, 9]], hold: true },
+        { t: 2.4, f: [[4, 6], [-3, 9]], b: [[-4, 6], [3, 9]] },
+        { t: 3.0, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], headDy: -1, hold: true },
+        { t: 3.9, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], headDy: -1, ease: 'out' },
         { t: 4.5, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], hold: true },
         { t: 5.4, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], ease: 'in' },
       ],
       6,
     ),
     // first arabesque: the front arm reaching forward above the shoulder, the other low and back, leaning in
-    arabesque: () => ({ f: [[5, -3], [11, -6]], b: [[-5, 1], [-10, 4]], headDx: 1, legs: LEGS.arabesque }),
+    arabesque: keyed(
+      [
+        { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
+        { t: 0.3, f: [[4, 6], [-3, 9]], b: [[-4, 6], [3, 9]], bob: 0, legs: LEGS.retire }, // developpe: through retire
+        { t: 0.6, f: [[5, -3], [11, -6]], b: [[-5, 1], [-10, 4]], bob: 0, ease: 'out', headDx: 1, legs: LEGS.arabesque },
+        { t: 1.8, f: [[5, -3], [12, -7]], b: [[-5, 1], [-10, 4]], bob: 0, headDx: 1, legs: LEGS.arabesque },
+        { t: 3.0, f: [[5, -3], [11, -6]], b: [[-5, 1], [-10, 4]], bob: 0, headDx: 1, legs: LEGS.arabesque },
+        { t: 3.0, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: 1 },
+        { t: 3.4, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: 1 },
+      ],
+      3.4,
+      { once: true },
+    ),
     // the pirouette: a preparation in fourth (plie, arms in third), one spotted turn in fifth, a finish
     pirprep: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.6, f: [[5, 5], [2, 10]], b: [[-6, 1], [-11, 3]], bob: 2 },
-        { t: 0.8, f: [[5, 5], [2, 10]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.6, f: [[4, 6], [-3, 9]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.8, f: [[4, 6], [-3, 9]], b: [[-6, 1], [-11, 3]], bob: 2 },
       ],
       0.8,
       { once: true },
     ),
-    pirouette: () => ({ f: [[4, -6], [1, -12]], b: [[-4, -6], [-1, -12]], bob: -1, legs: LEGS.retire }),
+    pirouette: () => ({ f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: -1, legs: LEGS.retire }),
     pirland: keyed(
       [
-        { t: 0, f: [[4, -6], [1, -12]], b: [[-4, -6], [-1, -12]], bob: 1, hold: true },
-        { t: 0.15, f: [[4, -6], [1, -12]], b: [[-4, -6], [-1, -12]], bob: 1, ease: 'out' },
-        { t: 0.5, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
+        { t: 0, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: 1, hold: true },
+        { t: 0.15, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: 0, headDy: -1, hold: true },
+        { t: 0.45, f: [[3, -7], [-3, -12]], b: [[-3, -7], [3, -12]], bob: 0, headDy: -1, ease: 'out' },
+        { t: 0.8, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
-      0.5,
+      0.8,
       { once: true },
     ),
-    // the reverence: open to second, a curtsey with the head bowed, rise with a hand to the heart
+    // the reverence: open to second, a curtsey with the head bowed, a second smaller bow, open low, close
     reverence: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0, hold: true },
         { t: 0.8, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
         { t: 1.3, f: [[5, 6], [9, 11]], b: [[-5, 6], [-9, 11]], bob: 4, headDy: 1, hold: true },
-        { t: 2.3, f: [[5, 6], [9, 11]], b: [[-5, 6], [-9, 11]], bob: 4, headDy: 1, ease: 'out' },
-        { t: 2.8, f: [[4, 4], [1, 4]], b: [[-2, 8], [-1, 13]], bob: 0, hold: true },
+        { t: 2.0, f: [[5, 6], [9, 11]], b: [[-5, 6], [-9, 11]], bob: 4, headDy: 1, ease: 'out' },
+        { t: 2.3, f: [[5, 7], [9, 10]], b: [[-5, 7], [-9, 10]], bob: 0 },
+        { t: 2.5, f: [[5, 7], [9, 10]], b: [[-5, 7], [-9, 10]], bob: 2, headDy: 1 },
+        { t: 2.8, f: [[5, 7], [9, 10]], b: [[-5, 7], [-9, 10]], bob: 0 },
+        { t: 3.3, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 0 },
       ],
-      3.3,
+      3.4,
       { once: true },
     ),
     // ---------- the Charleston: arms swinging in opposition to the kick, a down-bounce on every beat ----------
@@ -386,22 +437,15 @@
         const sh = osc(t, 8);
         return { f: [[5, -1], [6 + sh, -7]], b: [[-5, -1], [-6 - sh, -7]], item: 'jazz', bob: 0, legs: LEGS.plie };
       }
-      const ph = osc(t, 8, 4); // 4 phases at 8 Hz: kick L, down, kick R, down
-      if (ph === 0) return { f: [[4, 6], [7, 11]], b: [[-4, 6], [-8, 1]], item: 'jazz', bob: 0, legs: (o) => LEGS.charleston(o, 0) };
-      if (ph === 2) return { f: [[4, 6], [8, 1]], b: [[-4, 6], [-7, 11]], item: 'jazz', bob: 0, legs: (o) => LEGS.charleston(o, 1) };
+      const u = ((t % 0.44) + 0.44) % 0.44; // kick 0.14, down 0.08, kick 0.14, down 0.08
+      const ph = u < 0.14 ? 0 : u < 0.22 ? 1 : u < 0.36 ? 2 : 3;
+      if (ph === 0) return { f: [[4, 6], [7, 11]], b: [[-4, 6], [-8, 1]], item: 'jazz', bob: 0, headDx: -1, bodyDx: -1, legs: (o) => LEGS.charleston(o, 0) };
+      if (ph === 2) return { f: [[4, 6], [8, 1]], b: [[-4, 6], [-7, 11]], item: 'jazz', bob: 0, headDx: 1, bodyDx: 1, legs: (o) => LEGS.charleston(o, 1) };
       return { f: [[4, 7], [6, 10]], b: [[-4, 7], [-6, 10]], item: 'jazz', bob: 1, legs: LEGS.plie }; // down, knees together
     },
-    // ---------- the ukulele: the strumming hand where the neck meets the body, a down-stroke on the beat ----------
-    ukulele: (t) => {
-      const ph = (((t % 0.52) + 0.52) % 0.52) / 0.52;
-      const y = ph < 0.25 ? 9 + Math.round(3 * (1 - Math.pow(1 - ph * 4, 2))) : 12 - Math.round(3 * ((ph - 0.25) / 0.75));
-      return { f: [[2, 7], [0, y]], b: [[-3, 4], [-8, 0]], item: 'uke', bob: ph < 0.15 ? -1 : 0 };
-    },
-    situke: (t) => {
-      const ph = (((t % 0.52) + 0.52) % 0.52) / 0.52;
-      const y = ph < 0.25 ? 9 + Math.round(3 * (1 - Math.pow(1 - ph * 4, 2))) : 12 - Math.round(3 * ((ph - 0.25) / 0.75));
-      return { f: [[2, 7], [0, y]], b: [[-3, 4], [-8, 0]], item: 'uke' };
-    },
+    // ---------- the ukulele: the strumming hand on the island strum, the fretting hand changing with the chords ----------
+    ukulele: (t) => ukeSpec(t, true),
+    situke: (t) => ukeSpec(t, false),
     reach: () => ({ f: UP_F }),
     shelve: () => ({ f: [[0, -7], [0, -14]], b: [[0, 8], [0, 15]] }),
     browse: (t) => (osc(t, 0.8, 3) === 0 ? { f: [[0, -6], [0, -13]] } : { f: [[1, 8], [0, 12]] }),
@@ -527,12 +571,10 @@
     let bob = wf === 1 || wf === 3 ? -1 : 0;
     if (!a.moving && a.happy && (pose === 'stand' || pose === 'read') && osc(t, 2, 4) === 0) bob = -1;
     if (pose === 'cheer' || pose === 'clap') bob = -osc(t, 4);
-    if (pose === 'plie') bob = Math.round(2 + 2 * Math.sin(t * 2.2)); // down and up through the knees
+    if (pose === 'arabesque' || pose === 'pirouette') bob = -1; // up on the toes (a spec can say otherwise)
     const pre = POSES[pose] ? POSES[pose](t, a.poseT || 0) : null;
+    if (pre && pre.bodyDx) cx += pre.bodyDx; // a sway of the whole body (the Charleston's swivel)
     if (pre && pre.bob != null) bob = pre.bob; // dance poses carry their own rise and fall
-    if (pose === 'reverence') bob = 2;
-    if (pose === 'charleston') bob = osc(t, 4) ? -1 : 0;
-    if (pose === 'arabesque' || pose === 'pirouette') bob = -1; // up on the toes
     const T = fy - H + bob + drop;
     // realistic proportions: head ~1/7 of the height, legs half of it
     const sy = T + 11; // shoulders
@@ -596,20 +638,22 @@
     const fJ = joint(fsx, fA);
     const bJ = joint(bsx, bA);
     const dancing = DANCE_POSES[pose];
+    // a 1 px selective outline so the arms read against the shelves (drawn before the body, so never over the cardigan)
+    const outline = (sx, j) => {
+      const ol = B.theme === 'cyber' ? '#1a1230' : '#4a3426';
+      limb(g, sx, sy + 1, j.e[0], j.e[1], ol, 4);
+      limb(g, j.e[0], j.e[1], j.h[0], j.h[1], ol, 3);
+    };
     const drawArm = (sx, j, far) => {
       const c = far ? lit(S, -1) : S;
-      if (dancing) {
-        // a 1 px selective outline so the arms read against the shelves (and a rim light in the neon city)
-        const ol = B.theme === 'cyber' ? '#1a1230' : '#3a2a1e';
-        limb(g, sx, sy + 1, j.e[0], j.e[1], ol, 4);
-        limb(g, j.e[0], j.e[1], j.h[0], j.h[1], ol, 4);
-      }
+      if (dancing && far) outline(sx, j);
       limb(g, sx, sy + 1, j.e[0], j.e[1], c);
       limb(g, j.e[0], j.e[1], j.h[0], j.h[1], c);
       if (!far) P(lit(S, 1), sx - (fd > 0 ? 1 : 0), sy, 1, 2); // the shoulder catching the light
       if (dancing && B.theme === 'cyber') {
-        limb(g, sx, sy, j.e[0], j.e[1] - 1, '#b48cff', 1);
-        limb(g, j.e[0], j.e[1] - 1, j.h[0], j.h[1] - 1, '#b48cff', 1);
+        // a rim light: bright on the near arm, dimmer and on the forearm only on the far one
+        if (!far) limb(g, sx, sy, j.e[0], j.e[1] - 1, '#b48cff', 1);
+        limb(g, j.e[0], j.e[1] - 1, j.h[0], j.h[1] - 1, far ? '#7a5cb0' : '#b48cff', 1);
         P('#3ff5ff', j.h[0], j.h[1] - 1, 1, 1); // a cyan cuff
       }
       P(far ? lit(skin, -1) : skin, j.h[0] - 1, j.h[1], 2, 2);
@@ -618,6 +662,7 @@
 
     // ----- back arm -----
     drawArm(bsx, bJ, true);
+    if (dancing) outline(fsx, fJ);
 
     // ----- legs -----
     const shoe = (x, y, w) => {
@@ -664,9 +709,11 @@
       }
       if (L.dress) {
         // a skirt flaring from the waist to below the knee
+        // dancing, the hem flares in the turn and swings a beat behind the Charleston's bounce
+        const flare = pose === 'pirouette' ? 2 : pose === 'charleston' && osc(t - 0.09, 8, 4) % 2 ? 1 : 0;
         for (let y = waist; y < knee + 3; y++) {
           const k = (y - waist) / (knee + 3 - waist);
-          const w = Math.round(10 + k * 4);
+          const w = Math.round(10 + k * 4) + (k > 0.6 ? flare * 2 : 0);
           band(L.bottom, cx - Math.floor(w / 2) - (side && fd < 0 ? 1 : 0), w, y, 1, true);
         }
         P(lit(L.bottom, -1), cx - 7, knee + 2, 14, 1);
@@ -707,7 +754,7 @@
     // ----- neck & head -----
     const slump = a.slump && !a.moving && !SIT_POSES[pose] ? 1 : 0;
     const hy = T + slump + (pose === 'sleep' ? 4 : 0) + ((spec && spec.headDy) || 0);
-    const hx = cx - 4 + (side ? fd : 0) + (pose === 'sleep' ? 3 * fd : 0) + ((spec && spec.headDx) || 0) * fd;
+    const hx = cx - 4 + (side ? fd : 0) + (pose === 'sleep' ? 3 * fd : 0) + ((spec && spec.headDx) || 0) * fd + (pose === 'pirouette' && side ? fd : 0);
     P(lit(skin, -1), cx - 1, hy + 8, 3, sy - hy - 8); // neck, in the head's shadow
     // head: rounded, narrowing to the jaw
     P(skin, hx + 1, hy, 6, 1);

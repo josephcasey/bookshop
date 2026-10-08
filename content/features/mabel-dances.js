@@ -28,6 +28,22 @@
     },
   });
 
+  B.decor({
+    id: 'barre-leg',
+    layer: 'counter',
+    draw(g, s) {
+      const o = s.owner;
+      if (o.area !== 'inside' || o.pose !== 'barre' || o.hidden) return;
+      const fd = o.dir || 1;
+      const y = B.LAYOUT.counterTop - 4;
+      const x0 = fd > 0 ? Math.round(o.x) + 1 : Math.round(o.x) - 13;
+      const cy = B.theme === 'cyber';
+      B.px(g, cy ? '#5a5070' : '#8a7068', x0, y, 12, 2); // the stocking, lit along the top
+      B.px(g, cy ? '#2a2438' : '#4a3a3a', x0, y + 2, 12, 1); // its shadowed underside
+      B.px(g, cy ? '#3ff5ff' : '#3a2418', fd > 0 ? x0 + 12 : x0 - 2, y, 2, 2); // a pointed foot
+    },
+  });
+
   // ---------- her tune (original) ----------
   // I vi ii7 V7 I IV(iv) V7 I on real ukulele shapes (re-entrant GCEA, low to high as strung: G C E A)
   const N = (n) => 440 * Math.pow(2, (n - 69) / 12); // MIDI note -> Hz
@@ -43,13 +59,13 @@
   const STRUM = [[0, 'D'], [1, 'D'], [1.6, 'U'], [2.6, 'U'], [3, 'D'], [3.6, 'U']];
   // an original melody: [beat, MIDI note, beats]; bar 5 answers bar 1
   const MELODY = [
-    [0, 76, 1], [1, 79, 0.5], [1.5, 81, 1], [2.5, 79, 1.5],
-    [4, 76, 1], [5, 72, 1], [6, 69, 2],
-    [8, 77, 1], [9, 81, 0.5], [9.5, 79, 1], [10.5, 77, 1.5],
+    [0, 76, 1], [1, 79, 0.5], [1.6, 81, 0.9], [2.5, 79, 1.5],
+    [4, 76, 1], [5, 73, 1], [6, 69, 2], // E, C sharp, A: an A7 arpeggio into Dm7
+    [8, 77, 1], [9, 81, 0.5], [9.6, 79, 0.9], [10.5, 77, 1.5],
     [12, 74, 1], [13, 71, 1], [14, 67, 1], [15, 71, 1],
-    [16, 76, 1], [17, 79, 0.5], [17.5, 81, 1], [18.5, 79, 1.5],
+    [16, 76, 1], [17, 79, 0.5], [17.6, 81, 0.9], [18.5, 79, 1.5],
     [20, 81, 1], [21, 77, 1], [22, 80, 1.5], [23.5, 77, 0.5],
-    [24, 74, 1], [25, 77, 1], [26, 76, 0.5], [26.5, 74, 1.5],
+    [24, 74, 1], [25, 77, 1], [26, 76, 0.5], [26.6, 74, 1.4],
     [28, 72, 3], [31, 79, 1],
   ];
   const BEAT = 0.52;
@@ -142,7 +158,7 @@
     when: (s, o) => free(s, o) && station(s) === 'swissclassic',
     *run(s, o) {
       // class order, phrased in eights (~72 bpm: an 8-count is about 6.7 s): plies at the barre first
-      yield o.go(140);
+      yield o.go(176); // the counter's clearest stretch, plain plaster behind
       o.face(1);
       B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
       yield o.hold('stretch', 1.5);
@@ -156,7 +172,7 @@
       if (B.chance(0.35)) yield o.hold('grandplie', 6);
       yield o.hold('portdebras', 6);
       o.face(1);
-      yield o.hold('arabesque', 3);
+      yield o.hold('arabesque', 3.4);
       // a pirouette: prepare, one spotted turn (the face longest, the back a blink), finish
       o.face(0);
       yield o.hold('pirprep', 0.8);
@@ -168,8 +184,8 @@
       }
       o.backView = false;
       o.face(0);
-      yield o.hold('pirland', 0.5);
-      yield o.hold('reverence', 3.3); // a bow, to nobody in particular
+      yield o.hold('pirland', 0.8);
+      yield o.hold('reverence', 3.4); // two bows, to nobody in particular
       if (B.chance(0.5)) o.emote('heart', 1.4);
       o.pose = 'stand';
     },
