@@ -569,7 +569,7 @@
       const dayAmt = clamp((P.e + 1) / 8, 0, 1);
       // reflections hold through twilight (the bright sky outshines a dark shop); after dark an unlit shop's glass
       // still mirrors the lit shops and headlamps across the road
-      const nightRefl = B.oppositeStreet && F.streetLife ? clamp((-P.e - 4) / 6, 0, 1) * (s.shop.lights ? 0.25 : 0.9) : 0;
+      const nightRefl = B.oppositeStreet && F.streetLife ? clamp((-P.e - 4) / 6, 0, 1) * (s.shop.lights ? 0.18 : 0.75) : 0;
       const reflAmt = Math.max(clamp((P.e + 7) / 9, 0, 1), nightRefl);
       // morning, sun behind the building: the shop's side wall in the alley faces SSE (52 deg off the sun) and catches
       // it above the shadow of the house across the 1.5 m alley
@@ -659,7 +659,7 @@
           const streetK = B.oppositeStreet && F.streetLife ? 1 : 0;
           // after dark a lit shop opposite (~100 cd/m2, 8% in the glass) outshines an unlit interior several times over
           const dayK = streetK ? (!P.morning && P.e < 8 ? 0.35 : 0.45) : 0.3;
-          const base = Math.max(dayK * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.85 * nightRefl); // (the flat's lamp only dims its own panes)
+          const base = Math.max(dayK * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.6 * nightRefl); // (the flat's lamp only dims its own panes; kept below the room so the lit shops don't take over the glass)
           // where the glass mirrors sky (~8% of 500-5000 cd/m2) it outshines the room behind: dim the room, screen the sky
           const skyMul = Math.max(0.75 * dayAmt, duskK); // the sky's image (~400 cd/m2) all but hides the room behind
           // in a lit flat the reflected sky takes only its physical share: R*Lsky / (R*Lsky + Lroom)
@@ -707,8 +707,11 @@
                 dkg.globalCompositeOperation = 'source-over';
                 tg.globalCompositeOperation = 'multiply';
                 tg.drawImage(dk, 0, 0);
+                // (multiply leaves the mask itself wherever this layer was empty: trim back to the street part only)
                 tg.globalCompositeOperation = 'destination-in';
                 tg.drawImage(rc2, 0, 0);
+                tg.globalCompositeOperation = 'destination-out';
+                tg.drawImage(reflCache.m, 0, 0);
               }
               tg.globalCompositeOperation = 'source-over';
               g.globalAlpha = clamp(skyPart ? skyA : base, 0, 1);

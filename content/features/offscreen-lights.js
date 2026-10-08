@@ -587,10 +587,20 @@
   const COUNTER_FRONT = { x: 136, y: 129, w: 72, h: 15 }; // the part seen through the glass
   const SHOP = {
     aperture: () => [B.LAYOUT.win],
-    receivers: () => [
-      { Z: 40, rects: [B.LAYOUT.win], minus: [COUNTER_FRONT], reveal: true },
-      { Z: 12, rects: [COUNTER_FRONT], reveal: true },
-    ],
+    // every depth is its own receiver: lit by the light that reaches that plane, shadowed only by what's nearer the
+    // source, and applied only to the pixels it owns (a prop never wears its own shadow, or the shadow of what's
+    // behind it)
+    receivers: (s) => {
+      const V = visMasks(s);
+      const win = [B.LAYOUT.win];
+      return [
+        { Z: 4, rects: win, vis: V[0], reveal: true },
+        { Z: 13, rects: win, vis: V[1], reveal: true },
+        { Z: 22, rects: win, vis: V[2], reveal: true, skipZ: 20 },
+        { Z: 34, rects: win, vis: V[3], reveal: true },
+        { Z: 40, rects: win, vis: V[4], reveal: true },
+      ];
+    },
     occluders: () => [[76, 76, 2, 8, 0], [144, 76, 2, 8, 0], [9, 84, 202, 2, 0]], // glazing bars
     masks: (s) => propMasks(s),
     people: (s) => {
@@ -648,6 +658,52 @@
       if (L.decor && B.renderKit) for (const layer of L.decor) B.renderKit.decor(m.g, s, layer);
     });
     return masks;
+  }
+
+  // Which receiver owns each pixel of the window, nearest first: the display (z 4), the counter, its clutter and anyone
+  // in front of it (13), the pendants and anyone at the back (22), the back-wall props (34), and the wall (40).
+  let visT = -1;
+  let visF = -1;
+  const vis = [];
+  function visMasks(s) {
+    if (visT === s.simT && visF === frameNo && vis.length) return vis;
+    visT = s.simT;
+    visF = frameNo;
+    const ms = propMasks(s);
+    const byZ = (z) => ms.find((m) => m.z === z);
+    for (let i = 0; i < 5; i++) if (!vis[i]) vis[i] = mk();
+    const ppl = SHOP.people(s).filter(([, z]) => z > 0);
+    const Wn = B.LAYOUT.win;
+    const own = [
+      (g) => byZ(4) && g.drawImage(byZ(4).c, 0, 0),
+      (g) => {
+        if (byZ(13)) g.drawImage(byZ(13).c, 0, 0);
+        g.fillStyle = '#000';
+        g.fillRect(COUNTER_FRONT.x, COUNTER_FRONT.y, COUNTER_FRONT.w, COUNTER_FRONT.h);
+        for (const [a, z] of ppl) if (z < 15) B.drawSilhouette(g, a, a.x, a.y, 1, 1);
+      },
+      (g) => {
+        if (byZ(20)) g.drawImage(byZ(20).c, 0, 0);
+        for (const [a, z] of ppl) if (z >= 15) B.drawSilhouette(g, a, a.x, a.y, 1, 1);
+      },
+      (g) => byZ(34) && g.drawImage(byZ(34).c, 0, 0),
+      (g) => {
+        g.fillStyle = '#000';
+        g.fillRect(Wn.x, Wn.y, Wn.w, Wn.h);
+      },
+    ];
+    for (let i = 0; i < 5; i++) {
+      const [, g] = vis[i];
+      if (!g) continue;
+      g.globalCompositeOperation = 'source-over';
+      g.clearRect(0, 0, W, H);
+      own[i](g);
+      // nearer layers hide it
+      g.globalCompositeOperation = 'destination-out';
+      for (let j = 0; j < i; j++) if (vis[j][0]) g.drawImage(vis[j][0], 0, 0);
+      g.globalCompositeOperation = 'source-over';
+    }
+    return vis.map((v) => v[0]);
   }
 
   // The scene's true colours before darkening: the shop interior (taken mid-frame by render.js), and the street.
@@ -725,8 +781,11 @@
     // the source as one or more points: a car's two headlamps; a broad window as a spread of points (soft shadows)
     const pts = src.soft ? (src.compact ? [[-6, 0], [6, 0]] : [[-18, 0], [18, 0]]) : src.pair === 'across' ? [[-26, 0], [26, 0]] : src.pair === 'depth' ? [[0, 0], [0, 14]] : [[0, 0]];
     const passA = src.soft ? 0.5 : src.pair ? 0.6 : 1; // soft: a solid core where both points are blocked, one clean penumbra step
+    const srcA = src.a;
     for (const rcv of room.receivers(s)) {
       const Z = rcv.Z;
+      // nearer the lamp, brighter: ((40 + D) / (Z + D))^2, at most 2.2x the wall (the receivers all key to the wall)
+      src.a = rcv.vis ? Math.min(1, srcA * Math.min(2.2, Math.pow((40 + src.D) / (Z + src.D), 2))) : srcA;
       const at = (x, y, z, ox = 0, dD = 0) => {
         const m = (Z + src.D + dD) / (z + src.D + dD);
         const sx = src.x + ox;
@@ -848,7 +907,7 @@
         if (room.masks) {
           if (src.main) pg.globalAlpha = pi > 0 ? 0.4 : 0.9;
           for (const mk2 of room.masks(s)) {
-            if (!mk2.g || mk2.z >= Z - 1) continue;
+            if (!mk2.g || mk2.z >= Z - 1 || mk2.z === rcv.skipZ) continue;
             const m = (Z + src.D + dD) / (mk2.z + src.D + dD);
             const sx = src.x + ox;
             pg.drawImage(mk2.c, Math.round(sx - sx * m), Math.round(src.y - src.y * m), Math.round(W * m), Math.round(H * m));
@@ -877,6 +936,14 @@
       pg.imageSmoothingEnabled = false;
       pg.restore();
       if (F.bands) quantise(pg, 3, 0.8, true, RB);
+      if (rcv.vis) {
+        // only on the pixels this depth owns
+        for (const c of [pg, bgx]) {
+          c.globalCompositeOperation = 'destination-in';
+          c.drawImage(rcv.vis, 0, 0);
+          c.globalCompositeOperation = 'source-over';
+        }
+      }
       const clipTo = (c) => {
         c.save();
         c.beginPath();
@@ -951,7 +1018,7 @@
         g.globalCompositeOperation = gAdd.globalCompositeOperation = 'source-over';
       } else if (rcv.reveal && !lit && F.reveal) {
         // while a strong beam is in, the rest of the room drops into deep cool shadow, so the lit patch reads
-        if (src.aim != null && src.a > 0.15) {
+        if (src.aim != null && src.a > 0.15 && (!rcv.vis || Z === 40)) {
           // light bounced off the lit patch fills the room a little (in the beam's colour)
           g.globalCompositeOperation = 'lighter';
           g.fillStyle = rgba(src.col, 0.035 * src.a);
@@ -966,7 +1033,7 @@
         gAdd.globalAlpha = 1;
       }
       // dust drifting in a strong beam
-      if (rcv.reveal && (src.a > 0.35 || (src.motes && src.a > 0.12))) {
+      if (rcv.reveal && (!rcv.vis || Z === 40) && (srcA > 0.35 || (src.motes && srcA > 0.12))) {
         const g0 = g;
         g = gAdd;
         g.globalCompositeOperation = 'lighter';
@@ -987,6 +1054,7 @@
         gAdd.globalCompositeOperation = 'source-over';
       }
     }
+    src.a = srcA;
   }
 
   /** The lights behind us that shine through the windows. */
