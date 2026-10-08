@@ -516,6 +516,7 @@ export async function dance(tag = 'dance', themes = ['classic']) {
         for (const [pose, dir, back, t, x, fromPose, fromT] of steps) {
           Object.assign(o, { area: 'inside', depth: 'back', x, moving: false, pose, hidden: false, dir, backView: back, holding: null, emoteKind: null });
           o._blendFrom = null;
+          o._hpFace = null; // no bun trail carried between cells
           if (fromPose) {
             // draw the outgoing pose once, so the incoming one blends from it
             Object.assign(o, { pose: fromPose, t: fromT, poseT: fromT, _lp: fromPose, _blendPose: fromPose });

@@ -376,7 +376,7 @@
         { t: 1.4, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 2 },
         { t: 2.6, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
         { t: 3.0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
-        { t: 4.4, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, bob: 2 },
+        { t: 4.4, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]], bob: 2 },
         { t: 6.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
       6.0,
@@ -388,8 +388,8 @@
       [
         { t: 0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], hold: true },
         { t: 0.9, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]] },
-        { t: 1.5, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, hold: true },
-        { t: 2.4, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1 },
+        { t: 1.5, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]], hold: true },
+        { t: 2.4, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]] },
         { t: 3.0, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1 },
         { t: 3.2, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -2, hold: true },
         { t: 3.4, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1, hold: true },
@@ -403,7 +403,7 @@
     arabesque: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.3, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, bob: 0, legs: LEGS.retire }, // developpe: through retire
+        { t: 0.3, f: [[3, 5], [5, 8]], b: [[2, 5], [4, 8]], bob: 0, legs: LEGS.retire }, // developpe: through retire
         { t: 0.6, f: [[6, -2], [12, -4]], b: [[-6, 0], [-11, 3]], bob: 0, ease: 'out', headDx: 1, legs: LEGS.arabesque },
         { t: 1.8, f: [[6, -2], [12, -5]], b: [[-6, 0], [-11, 3]], bob: 0, headDx: 1, legs: LEGS.arabesque },
         { t: 3.0, f: [[6, -2], [12, -4]], b: [[-6, 0], [-11, 3]], bob: 0, headDx: 1, legs: LEGS.arabesque },
@@ -417,8 +417,8 @@
     pirprep: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.6, f: [[5, 8], [-2.5, 12]], b: [[-6, 1], [-11, 3]], bob: 2 },
-        { t: 0.8, f: [[5, 8], [-2.5, 12]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.6, f: [[4, 5], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.8, f: [[4, 5], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
       ],
       0.8,
       { once: true },
@@ -795,6 +795,12 @@
     const hy = T + slump + (pose === 'sleep' ? 4 : 0) + ((spec && spec.headDy) || 0);
     const hx = cx - 4 + (side ? fd : 0) + (pose === 'sleep' ? 3 * fd : 0) + ((spec && spec.headDx) || 0) * fd + (pose === 'pirouette' && side ? fd : 0);
     P(lit(skin, -1), cx - 1, hy + 8, 3, sy - hy - 8); // neck, in the head's shadow
+    if (side && B.theme !== 'cyber' && DANCE_POSES[pose]) {
+      // a dark edge along the back and crown of her head, so it doesn't melt into the lamp-lit plaster
+      // (the hair drawn a pixel back and up, then covered by the real hair and head)
+      const hs = HAIR[L.hairStyle] || HAIR.short;
+      spans(g, hs.side, hx - fd, hy - 1, fd, '#4a3426', '#4a3426');
+    }
     // head: rounded, narrowing to the jaw
     P(skin, hx + 1, hy, 6, 1);
     P(skin, hx, hy + 1, 8, 6);
@@ -816,14 +822,21 @@
     let bunDy = 0;
     if (L.hairStyle === 'bun' && !a.moving) {
       // the bun's follow-through: when the head moves, the bun trails it by a pixel for 0.12 s
-      if (!a._hp || a._hp[0] !== hx || a._hp[1] !== hy) {
-        a._hpPrev = a._hp || [hx, hy];
+      // (not across a turn or a new pose, and in profile only ever into the head, never opening a gap)
+      const faceKey = `${d}|${back}|${pose}`;
+      if (a._hpFace !== faceKey || !a._hp || t < a._hpT) {
+        a._hpFace = faceKey;
+        a._hp = a._hpPrev = [hx, hy];
+        a._hpT = -1;
+      } else if (a._hp[0] !== hx || a._hp[1] !== hy) {
+        a._hpPrev = a._hp;
         a._hp = [hx, hy];
         a._hpT = t;
       }
-      if (t >= a._hpT && t - a._hpT < 0.12) {
+      if (a._hpT >= 0 && t - a._hpT < 0.12) {
         bunDx = Math.max(-1, Math.min(1, a._hpPrev[0] - hx));
         bunDy = Math.max(-1, Math.min(1, a._hpPrev[1] - hy));
+        if (side && Math.sign(bunDx) === -fd) bunDx = 0;
       }
     }
     if (bunDx || bunDy) {
@@ -996,14 +1009,26 @@
   // ---------- faces ----------
   // At this scale a face is a few well-placed pixels: dark eyes, a brow, a mouth. Expression lives mostly in the
   // posture and the speech bubble; the face just agrees with it.
+  // her face while she dances: serene through the held, inward moments; a grin for the Charleston; humming to the uke
+  const SERENE = { arabesque: [0.6, 3.0], portdebras: [3.0, 3.9], reverence: [1.3, 2.3], barre: [2.0, 3.6] };
+  function danceExpr(a) {
+    const p = a.pose;
+    const pt = a.poseT || 0;
+    const w = SERENE[p];
+    if (w && pt >= w[0] && pt < w[1]) return 'serene';
+    if (p === 'charleston') return 'happy';
+    if (p === 'ukulele' || p === 'situke') return (a.t || 0) % 4.16 < 0.26 ? 'open' : 'happy'; // an 'o' of humming every two bars
+    if (p === 'pirland' || p === 'reverence') return 'happy';
+    return null;
+  }
   function drawFace(g, a, L, hx, hy, d, fd, P, face) {
-    const expr = a.expr ? a.expr() : 'neutral';
+    const expr = (a.emoteKind ? null : danceExpr(a)) || (a.expr ? a.expr() : 'neutral');
     const { ey, eyes, profile } = face;
     const ink = '#1e1618';
     const blink = a.blinking > 0 && expr !== 'laugh';
     const lid = lit(L.skin, -1);
     for (const e of eyes) {
-      if (expr === 'closed' || blink || expr === 'laugh') P(lid, e, ey, 1, 1);
+      if (expr === 'closed' || expr === 'serene' || blink || expr === 'laugh') P(lid, e, ey, 1, 1);
       else if (expr === 'tired') {
         P(lid, e, ey, 1, 1);
         P(ink, e, ey + 1, 1, 1);
@@ -1037,6 +1062,7 @@
     switch (talking ? 'open' : expr) {
       case 'happy':
       case 'smitten':
+      case 'serene':
         P(lip, m, my, profile ? 1 : 2, 1);
         if (!profile) {
           P(lip, m - 1, my - 1, 1, 1);
