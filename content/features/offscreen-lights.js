@@ -708,7 +708,9 @@
     // the box each depth's pixels occupy (the work for that depth is confined to it; none, and it's skipped)
     visBB = vis.map(([, g], i) => {
       if (i === 4 || !g) return Wn;
-      const d = g.getImageData(Wn.x, Wn.y, Wn.w, Wn.h).data;
+      const img = g.getImageData && g.getImageData(Wn.x, Wn.y, Wn.w, Wn.h);
+      if (!img || !img.data) return Wn;
+      const d = img.data;
       let x0 = Wn.w;
       let y0 = Wn.h;
       let x1 = -1;
