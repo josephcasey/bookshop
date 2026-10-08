@@ -1,0 +1,3 @@
+#!/bin/sh
+# Stamp the build number into js/version.js (see tools/stamp-version.sh).
+sh tools/stamp-version.sh

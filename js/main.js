@@ -310,10 +310,35 @@
       const r = canvas.getBoundingClientRect();
       return [((e.clientX - r.left) / r.width) * B.W, ((e.clientY - r.top) / r.height) * B.H];
     };
+    // ----- the build number: hover over (or tap) the CINEMA sign in the alley -----
+    const onSign = (x, y) => x >= 282 && x < 305 && y >= 62 && y < 128;
+    const buildTip = document.createElement('div');
+    buildTip.id = 'buildTip';
+    Object.assign(buildTip.style, {
+      position: 'fixed', display: 'none', zIndex: '20', pointerEvents: 'none', padding: '4px 8px', borderRadius: '4px',
+      background: 'rgba(20,16,28,0.92)', color: '#ffd23f', border: '1px solid #ff4fa3', font: '12px monospace', whiteSpace: 'nowrap',
+    });
+    document.body.appendChild(buildTip);
+    let tipUntil = 0;
+    const showBuild = (e, sec) => {
+      const b = B.BUILD || {};
+      buildTip.textContent = b.n ? `Build ${b.n} · ${b.date}` : 'Build: local';
+      buildTip.style.display = 'block';
+      const r = buildTip.getBoundingClientRect();
+      buildTip.style.left = Math.max(4, Math.min(innerWidth - r.width - 4, e.clientX - r.width - 12)) + 'px';
+      buildTip.style.top = Math.max(4, e.clientY - 28) + 'px';
+      tipUntil = sec ? performance.now() + sec * 1000 : 0;
+    };
+    const hideBuild = () => {
+      if (performance.now() >= tipUntil) buildTip.style.display = 'none';
+    };
+    canvas.addEventListener('mouseleave', hideBuild);
     canvas.addEventListener('mousemove', (e) => {
       const [x, y] = toGame(e);
       const D = B.LAYOUT.doorOpening;
       const door = x >= D.x && x < D.x + D.w && y >= D.y && y < D.y + D.h;
+      if (onSign(x, y)) showBuild(e, 0);
+      else hideBuild();
       canvas.style.cursor = onRadio(x, y) || onTv(x, y) || door ? 'pointer' : '';
     });
 
@@ -402,6 +427,11 @@
     // knock on the window
     canvas.addEventListener('click', (e) => {
       const [x, y] = toGame(e);
+      if (onSign(x, y)) {
+        showBuild(e, 4); // a tap shows it for a few seconds (there's no hover on a phone)
+        setTimeout(hideBuild, 4100);
+        return;
+      }
       if (onTv(x, y)) {
         if (tvpanel.classList.contains('hidden')) openTv();
         else closeTv();

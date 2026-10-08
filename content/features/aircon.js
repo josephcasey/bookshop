@@ -1,4 +1,6 @@
 /* 2026-10-07 (the air-con unit)
+ * 2026-10-08: the classic street has one too now (a cream box on the brickwork, same spot), and a fast fan no longer
+ * smears into a still grey disc: a blade catches the light as it whirls, so you can always see it turning.
  * The neon theme's air-con box between the flat's windows comes alive: the fan spins (fast on hot afternoons,
  * idling at night), the louvres shiver, condensate drips from the tray into the rust stain and splashes on the
  * sill below, a heat shimmer rises off the exhaust by day and a breath of vapour puffs out on cold nights. */
@@ -17,7 +19,27 @@
     id: 'aircon',
     layer: 'facade',
     draw(g, s) {
-      if (!cyber()) return;
+      const cy = cyber();
+      const K = cy
+        ? { blade: '#5d6577', gap: '#1c1f26', smear: '#434a58', smearO: '#3a404d', hub: '#6d7587', lv: '#353a46', lvS: '#3e4451', glint: '#8a93a8' }
+        : { blade: '#b8b0a0', gap: '#4a4640', smear: '#8a8478', smearO: '#7a746a', hub: '#d8d0c0', lv: '#a8a090', lvS: '#bab2a2', glint: '#f0ead8' };
+      if (!cy) {
+        // the classic street's unit (the neon one is part of its facade): a cream box with a round grille and louvres,
+        // on a pair of brackets, a rust streak under its drip tray
+        B.px(g, '#3a2a22', 109, 39, 1, 3);
+        B.px(g, '#3a2a22', 130, 39, 1, 3);
+        B.px(g, '#8a5a3a', 119, 40, 1, 8); // the stain on the bricks
+        B.px(g, '#d4ccbb', 108, 25, 24, 14);
+        B.px(g, '#e8e2d4', 108, 25, 24, 1);
+        B.px(g, '#9a9282', 108, 38, 24, 1);
+        B.px(g, '#b8b0a0', 131, 26, 1, 12);
+        for (let y = -5; y <= 5; y++)
+          for (let x = -5; x <= 5; x++) {
+            const r = x * x + y * y;
+            if (r <= 25 && r > 16) B.px(g, '#8a8476', CX + x, CY + y);
+            else if (r <= 16) B.px(g, '#4a4640', CX + x, CY + y);
+          }
+      }
       const now = performance.now() / 1000;
       const dt = last ? Math.max(0, Math.min(0.1, now - last)) : 0;
       last = now;
@@ -34,15 +56,21 @@
           let a = Math.atan2(y, x) / (Math.PI * 2) - phase;
           a = ((a * 3) % 1 + 1) % 1; // three blades
           const onBlade = a < 0.33;
-          const c = blur ? (r2 > 9 ? '#3a404d' : '#434a58') : onBlade ? '#5d6577' : '#1c1f26';
+          const c = blur ? (r2 > 9 ? K.smearO : K.smear) : onBlade ? K.blade : K.gap;
           if ((x + y) % 2 === 0 || !blur) B.px(g, c, CX + x, CY + y);
         }
-      B.px(g, '#6d7587', CX, CY); // the hub
+      if (blur) {
+        // at speed the eye catches one blade at a time: a glint sweeping round (the wagon-wheel effect, slowed so it reads)
+        const ga = (now * (0.9 + 0.8 * hot)) % 1;
+        for (let r = 2; r <= 4; r++) B.px(g, K.glint, CX + Math.round(Math.cos(ga * Math.PI * 2) * r), CY + Math.round(Math.sin(ga * Math.PI * 2) * r));
+      }
+      B.px(g, K.hub, CX, CY); // the hub
       // louvres on the exhaust side shiver in the airflow
       const shiver = Math.sin(now * (6 + 20 * hot)) > 0.3 ? 1 : 0;
-      for (let y = 28; y < 37; y += 2) B.px(g, shiver ? '#3e4451' : '#353a46', 123, y + shiver * 0, 7, 1);
+      for (let y = 28; y < 37; y += 2) B.px(g, shiver ? K.lvS : K.lv, 123, y, 7, 1);
       // a little status LED
-      B.px(g, Math.floor(now * 1.3) % 2 ? '#3ff5ff' : '#1a6a70', 129, 26);
+      if (cy) B.px(g, Math.floor(now * 1.3) % 2 ? '#3ff5ff' : '#1a6a70', 129, 26);
+      else B.px(g, Math.floor(now * 1.3) % 2 ? '#7ad070' : '#3a6a38', 129, 26);
       // condensate: a drop gathers under the tray, falls, splashes on the sill below
       if (!drip && Math.random() < dt * (0.25 + 0.6 * hot)) drip = { y: 39, v: 0, grow: 0 };
       if (drip) {
