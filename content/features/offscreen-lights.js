@@ -1273,7 +1273,7 @@
             gr.addColorStop(0.625, rgba(L.ledges.col, L.ledges.a));
             gr.addColorStop(1, rgba(L.ledges.col, L.ledges.a * 0.15));
             vg.fillStyle = gr;
-            for (const [x0, y0, w0] of [[0, 73, 274], [6, 74, 208], [222, 74, 44], [9, 86, 202], [4, 144, 212]]) vg.fillRect(x0, y0, w0, 1);
+            for (const [x0, y0, w0] of [[0, 73, 274], [6, 74, 208], [222, 74, 44], [9, 86, 202], [4, B.LAYOUT.sillY, 212]]) vg.fillRect(x0, y0, w0, 1);
             // and a wash over the faces turned towards the beacon: the stall-riser and the door
             vg.globalAlpha = 0.3;
             vg.fillRect(6, 148, 208, 16);
@@ -1459,7 +1459,7 @@
           if (ev.seed < 0.4) {
             const gx = Math.round(L.x + ev.dir * 20);
             g.fillStyle = `rgba(255,255,240,${0.16 * day * Math.min(1, k * 5, (1 - k) * 5)})`;
-            for (let y = 76; y < 144; y++) g.fillRect(gx + Math.round((144 - y) * 0.4), y, 3, 1);
+            for (let y = 76; y < B.LAYOUT.sillY; y++) g.fillRect(gx + Math.round((B.LAYOUT.sillY - y) * 0.4), y, 3, 1);
           }
         }
       }

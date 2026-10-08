@@ -10,6 +10,33 @@
   const UKE_HOOK = { x: 105, y: 95 };
   const station = (s) => (s.radio.on && s.radio.station ? s.radio.station.id : null);
   const free = (s, o) => o.area === 'inside' && s.customersInside() === 0 && o.energy > 0.2;
+  // she dances out in front of the counter, where the low window shows her from head to toe: round the counter's end
+  // by the door, and back behind it after (or straight back, if something interrupts her)
+  const BARRE_X = 184; // the counter's front edge, as a barre (clear of the cat's spot at 150 and the box stack at 190+)
+  const CENTRE_X = 168; // the clear floor in front of the counter
+  function* toStage(o, x) {
+    if (!o.onStage) {
+      yield o.go(214);
+      o.depth = 'front';
+      o.onStage = true;
+    }
+    yield o.go(x);
+  }
+  function* offStage(o) {
+    yield o.go(214);
+    o.onStage = false;
+    o.depth = 'back';
+  }
+  /** Runs a routine on the stage; if it's interrupted she's simply back behind the counter. */
+  function* staged(o, routine) {
+    try {
+      yield* routine;
+      yield* offStage(o);
+    } finally {
+      o.onStage = false;
+      o.depth = 'back';
+    }
+  }
 
   // ---------- the ukulele on its hook ----------
   B.decor({
@@ -25,23 +52,6 @@
       B.px(g, c, x + 1, y + 6, 3, 1);
       B.px(g, '#3a2010', x + 2, y + 8, 1, 1);
       if (B.theme === 'cyber') B.px(g, '#3ff5ff', x, y + 10, 5, 1); // an LED strip on the neon city's uke
-    },
-  });
-
-  B.decor({
-    id: 'barre-leg',
-    layer: 'counter',
-    draw(g, s) {
-      const o = s.owner;
-      if (o.area !== 'inside' || o.pose !== 'barre' || o.hidden) return;
-      const fd = o.dir || 1;
-      const y = B.LAYOUT.counterTop - 4;
-      const x0 = fd > 0 ? Math.round(o.x) + 1 : Math.round(o.x) - 13;
-      const cy = B.theme === 'cyber';
-      const x1 = fd > 0 ? x0 : x0 - 3;
-      B.px(g, cy ? '#6a6084' : '#9a8078', x1, y, 15, 2); // the stocking, lit along the top
-      B.px(g, cy ? '#2a2438' : '#4a3a3a', x1, y + 2, 15, 1); // its shadowed underside
-      B.px(g, cy ? '#ff7ad9' : '#e8b0a0', fd > 0 ? x1 + 15 : x1 - 2, y, 2, 2); // a pointed foot, in a pink slipper
     },
   });
 
@@ -158,43 +168,46 @@
     cooldown: 25,
     when: (s, o) => free(s, o) && station(s) === 'swissclassic',
     *run(s, o) {
-      // class order, phrased in eights (~72 bpm: an 8-count is about 6.7 s): plies at the barre first
-      yield o.go(182); // the counter's clearest stretch (between the till and the boxes), plain plaster behind
-      o.face(1);
-      B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
-      yield o.hold('stretch', 1.5);
-      o.face(0); // plies facing the barre, both hands on it
-      yield o.hold('barreplie', 6.6);
-      o.face(1); // then side-on: lets go, turns, takes the barre again
-      yield o.hold('barreturn', 0.4);
-      yield o.hold('barrepdb', 6);
-      yield o.hold('barre', 4.6); // a leg along the barre, leaning over it
-      // then the centre, in front of the dark arch
-      yield o.go(88);
-      o.face(0);
-      yield o.hold('plie', 4); // two demi-plies, the head inclining one way, then the other
-      yield o.hold('plieB', 4);
-      if (B.chance(0.5)) yield o.hold('grandplie', 6);
-      yield o.hold('portdebras', 6);
-      o.face(1);
-      yield o.hold('arabesque', 3.4);
-      // a pirouette: prepare, one spotted turn (the face longest, the back a blink), finish
-      o.face(0);
-      yield o.hold('pirprep', 0.8);
-      for (const [d, back, dur] of [[0, false, 0.18], [1, false, 0.1], [0, true, 0.08], [-1, false, 0.1], [0, false, 0.18]]) {
-        o.pose = 'pirouette';
-        o.dir = d;
-        o.backView = back;
-        yield dur;
-      }
-      o.backView = false;
-      o.face(0);
-      yield o.hold('pirland', 0.8);
-      yield o.hold('reverence', 3.4); // two bows, to nobody in particular
-      if (B.chance(0.5)) o.emote('heart', 1.4);
-      o.pose = 'stand';
+      yield* staged(o, balletClass(s, o));
     },
   });
+  function* balletClass(s, o) {
+    // class order, phrased in eights (~72 bpm: an 8-count is about 6.7 s): plies at the barre first
+    yield* toStage(o, BARRE_X);
+    o.face(-1); // facing along the counter, so the leg on the barre stays inside the window
+    B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
+    yield o.hold('stretch', 1.5);
+    o.face('away'); // plies facing the barre (her back to us), both hands on it
+    yield o.hold('barreplie', 6.6);
+    o.face(-1); // then side-on: lets go, turns, takes the barre again
+    yield o.hold('barreturn', 0.4);
+    yield o.hold('barrepdb', 6);
+    yield o.hold('barre', 4.6); // a leg along the barre, leaning over it
+    // then the centre
+    yield o.go(CENTRE_X);
+    o.face(0);
+    yield o.hold('plie', 4); // two demi-plies, the head inclining one way, then the other
+    yield o.hold('plieB', 4);
+    if (B.chance(0.5)) yield o.hold('grandplie', 6);
+    yield o.hold('portdebras', 6);
+    o.face(1);
+    yield o.hold('arabesque', 3.4);
+    // a pirouette: prepare, one spotted turn (the face longest, the back a blink), finish
+    o.face(0);
+    yield o.hold('pirprep', 0.8);
+    for (const [d, back, dur] of [[0, false, 0.18], [1, false, 0.1], [0, true, 0.08], [-1, false, 0.1], [0, false, 0.18]]) {
+      o.pose = 'pirouette';
+      o.dir = d;
+      o.backView = back;
+      yield dur;
+    }
+    o.backView = false;
+    o.face(0);
+    yield o.hold('pirland', 0.8);
+    yield o.hold('reverence', 3.4); // two bows, to nobody in particular
+    if (B.chance(0.5)) o.emote('heart', 1.4);
+    o.pose = 'stand';
+  }
 
   // ---------- the Charleston, when WWOZ is on ----------
   B.activity({
@@ -203,14 +216,17 @@
     cooldown: 25,
     when: (s, o) => free(s, o) && station(s) === 'wwoz',
     *run(s, o) {
-      yield o.go(88);
-      o.face(0);
-      B.log(B.pick([`WWOZ gets ${name()} doing the Charleston.`, `${name()} can't resist a Charleston to the New Orleans jazz.`]));
-      yield o.hold('charleston', 6);
-      yield o.hold('clap', 1);
-      yield o.hold('charleston', 6);
-      if (B.chance(0.5)) o.emote('happy', 1.4);
-      o.pose = 'stand';
+      yield* staged(o, charleston(s, o));
     },
   });
+  function* charleston(s, o) {
+    yield* toStage(o, CENTRE_X);
+    o.face(0);
+    B.log(B.pick([`WWOZ gets ${name()} doing the Charleston.`, `${name()} can't resist a Charleston to the New Orleans jazz.`]));
+    yield o.hold('charleston', 6);
+    yield o.hold('clap', 1);
+    yield o.hold('charleston', 6);
+    if (B.chance(0.5)) o.emote('happy', 1.4);
+    o.pose = 'stand';
+  }
 })(window.Bookshop);

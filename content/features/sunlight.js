@@ -112,7 +112,7 @@
   // things that project from the wall: [x0, x1, yUnder, depth(px)]
   function overhangs() {
     const L = B.LAYOUT;
-    const list = [[0, 280, 12, 4], [0, 274, 73, 6], [4, 216, 147, 3]]; // cornice, fascia (a deep sign box), sill
+    const list = [[0, 280, 12, 4], [0, 274, 73, 6], [4, 216, L.sillY + 3, 3]]; // cornice, fascia (a deep sign box), sill
     for (const u of L.upstairs) list.push([u.x - 4, u.x + u.w + 4, u.y - 3, 2], [u.x - 4, u.x + u.w + 4, u.y + u.h + 4, 2]);
     return list;
   }

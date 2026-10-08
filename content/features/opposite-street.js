@@ -268,8 +268,14 @@
     // the reflected kerb: a 1 px line the terrace and the walkers stand on
     g.fillStyle = night ? (cy ? '#1a1828' : '#2a2620') : cy ? '#3a3648' : '#b8b0a4';
     g.fillRect(0, Math.round(gy(0)), 320, 1);
+    // the reflected road below it: a couple of rows fading out, so the shop floor (and a dancer's feet) show through
+    // the low sill rather than a grey band
     g.fillStyle = night ? BLACK : cy ? '#24222c' : '#5a5650';
-    g.fillRect(0, Math.round(gy(0)) + 1, 320, 180);
+    g.globalAlpha = 0.6;
+    g.fillRect(0, Math.round(gy(0)) + 1, 320, 2);
+    g.globalAlpha = 0.25;
+    g.fillRect(0, Math.round(gy(0)) + 3, 320, 3);
+    g.globalAlpha = 1;
     return true;
   }
 

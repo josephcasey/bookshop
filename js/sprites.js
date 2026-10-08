@@ -187,7 +187,7 @@
   const DOWN_B = [[-1, 8], [-1, 16]];
   const UP_F = [[1, -8], [1, -16]];
   const osc = (t, hz, n = 2) => Math.floor(t * hz) % n;
-  // ---------- legs for dancing (inside the shop only the hips and thighs show above the stall-riser) ----------
+  // ---------- legs for dancing (she dances in front of the counter, where the low window shows her feet) ----------
   // o: { P, band, shoe, legC, shoes, cx, legTop, knee, fy, fd, side, lw, lit, frontLeg, backLeg }
   const diag = (o, c, x0, y0, x1, y1, w) => {
     const n = Math.max(Math.abs(y1 - y0), Math.abs(x1 - x0), 1);
@@ -199,11 +199,18 @@
     barre(o) {
       o.band(o.lit(o.legC, -1), o.backLeg, o.lw, o.legTop, o.fy - 2 - o.legTop, false);
       o.shoe(o.backLeg - (o.fd > 0 ? 0 : 2), o.fy - 2, 5);
-      const x0 = o.fd > 0 ? o.cx : o.cx - 15;
-      const ly = o.legTop - 6; // resting on the counter top (hip height: plausible for a retired professional)
-      o.P(o.lit(o.legC, 2), x0, ly, 15, 3);
+    },
+    // drawn over the skirt: the raised leg comes out from under the hem, which rides up over the thigh
+    barreOver(o) {
+      const x0 = o.fd > 0 ? o.cx + 3 : o.cx - 18;
+      const ly = o.legTop - 8; // resting along the counter top (hip height: plausible for a retired professional)
+      const cy = B.theme === 'cyber';
+      o.P(cy ? '#1a1230' : '#4a3426', x0 - 1, ly - 1, 17, 5); // a soft outline, so the leg reads against the counter
+      o.P(o.lit(o.legC, 1), x0, ly, 15, 3);
       o.P(o.lit(o.legC, 3), x0, ly, 15, 1);
-      point(o, o.fd > 0 ? x0 + 15 : x0 - 2, ly);
+      o.P(o.lit(o.legC, -1), x0, ly + 2, 15, 1);
+      o.P(cy ? '#ff7ad9' : '#e8b0a0', o.fd > 0 ? x0 + 14 : x0 - 2, ly, 3, 2); // a pointed foot, in a pink slipper
+      o.P(o.skirt, o.fd > 0 ? o.cx + 1 : o.cx - 6, ly - 1, 5, 6); // the hem, draped over the thigh
     },
     // arabesque: on the front leg, the back leg lifted out behind
     arabesque(o) {
@@ -356,7 +363,7 @@
         { t: 4.4, f: [[4, 6], [9, 11]], b: [[-3, -6], [-1, -12]], headDy: -1 },
       ],
       4.6,
-      { once: true, base: { legs: LEGS.barre } },
+      { once: true, base: { legs: LEGS.barre, legsOver: LEGS.barreOver } },
     ),
     // centre: plie, down on two counts and up on two, arms in second (a grand plie is deeper)
     plie: keyed(
@@ -768,6 +775,7 @@
         }
         P(lit(L.bottom, -1), cx - 7, knee + 2, 14, 1);
       } else band(L.bottom, cx - (side ? 4 : 5), side ? 8 : 10, waist, legTop - waist + 1);
+      if (spec.legsOver) spec.legsOver({ P, band, shoe, legC, shoes, cx, legTop, knee, fy, fd, side, lw, lit, frontLeg, backLeg, t, skirt: L.bottom });
     }
 
     // ----- torso -----

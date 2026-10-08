@@ -114,14 +114,10 @@
     px(g, C.steelL, W.x, 84, W.w, 1);
     for (const x of [76, 144]) px(g, C.steel, x, W.y, 2, 8);
     // sill & stallriser with vent grilles
-    px(g, C.steelL, 4, 144, 212, 3);
-    px(g, C.steelH, 4, 144, 212, 1);
-    px(g, C.steelD, 4, 147, 212, 1);
-    px(g, C.steel, 6, 148, 208, 16);
-    for (const x of [12, 80, 148]) {
-      px(g, C.steelD, x, 151, 60, 10);
-      for (let k = 0; k < 10; k += 2) px(g, '#0d0e13', x + 2, 152 + k, 56, 1);
-    }
+    const SY = L.sillY;
+    px(g, C.steelL, 4, SY, 212, 3);
+    px(g, C.steelH, 4, SY, 212, 1);
+    px(g, C.steelD, 4, SY + 3, 212, 164 - SY - 3);
     // pilasters: riveted I-beams
     for (const x of [0, 214, 266]) {
       px(g, C.steelD, x, 73, 8, 91);

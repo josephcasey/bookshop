@@ -83,16 +83,11 @@
     for (const [label, a, b] of [['FICTION', 9, 76], ['POETRY', 78, 144], ['MAPS & PRINTS', 146, 211]])
       shadowText(g, label, Math.round((a + b) / 2 - B.textWidth(label) / 2), 78, GOLD);
     // sill & stallriser
-    px(g, '#3d6b5d', 4, 144, 212, 3);
-    px(g, '#4f8272', 4, 144, 212, 1);
-    px(g, G3, 4, 147, 212, 1);
-    px(g, G, 6, 148, 208, 16);
-    for (const x of [12, 80, 148]) {
-      px(g, G3, x, 151, 60, 1);
-      px(g, G3, x, 151, 1, 10);
-      px(g, G2, x, 160, 60, 1);
-      px(g, G2, x + 59, 151, 1, 10);
-    }
+    // (a low stallriser: the window reaches nearly to the floor, so a dancer's feet show)
+    const SY = L.sillY;
+    px(g, '#3d6b5d', 4, SY, 212, 3);
+    px(g, '#4f8272', 4, SY, 212, 1);
+    px(g, G3, 4, SY + 3, 212, 164 - SY - 3);
     // pilasters
     for (const x of [0, 214, 266]) {
       px(g, G3, x, 73, 8, 91);
@@ -1108,7 +1103,7 @@
     ledge(244, 1, 18); // chimney
     ledge(0, 52, 274); // top of the sign
     for (const u of B.LAYOUT.upstairs) ledge(u.x - 4, u.y + u.h + 2, u.w + 8);
-    ledge(4, 144, 212); // shop window sill
+    ledge(4, B.LAYOUT.sillY, 212); // shop window sill
     ledge(LAMP - 7, 7, 15); // lamp cap
     ledge(274, 13, 6);
     if (s.shop.open) ledge(281, 145, 32); // on top of the A-board

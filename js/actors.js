@@ -33,6 +33,7 @@
       const L = B.LAYOUT;
       if (this.area === 'street') return L.streetY + this.lane;
       if (this.area === 'upstairs') return L.upstairsY;
+      if (this.onStage) return L.stageY; // dancing in front of the counter, in full view
       return this.depth === 'back' ? L.backY : L.frontY;
     }
     walkSpeed() {

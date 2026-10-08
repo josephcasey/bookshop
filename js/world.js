@@ -7,7 +7,9 @@
   // People are ~60px tall; the low ceiling sits just above their heads.
   B.LAYOUT = {
     G: 164,
-    win: { x: 9, y: 76, w: 202, h: 68 }, // shop window glass
+    win: { x: 9, y: 76, w: 202, h: 85 }, // shop window glass, down to a low sill (so the floor and a dancer's feet show)
+    sillY: 161,
+    stageY: 160, // the feet line for dancing in front of the counter (just above the sill)
     doorOpening: { x: 226, y: 92, w: 36, h: 72 },
     doorGlass: { x: 230, y: 98, w: 28, h: 34 },
     arch: { x: 75, y: 92, w: 27, h: 72 }, // passage to the rest of the shop
