@@ -133,6 +133,14 @@
   let sent = -1;
   let sentAt = 0;
   const KIND = { bus: 1, emergency: 1, car: 0.7, turn: 0.5, bike: 0.25 };
+  // every sound effect briefly covers the telly too, by how loud it is (the rest count as middling)
+  const LOUD = { siren: 1, bell: 0.9, door: 0.8, shout: 0.8, ring: 0.8, bark: 0.7, laugh: 0.6, hydraulic: 0.7, thud: 0.6, clatter: 0.6, knock: 0.5, gust: 0.5, kettle: 0.5, till: 0.5 };
+  const QUIET = { step: 0.12, squeak: 0.15, 'ac-drip': 0.05, purr: 0.15, coo: 0.2, click: 0.2, 'drone-hum': 0.15, buzz: 0.2, 'tv-click': 0, 'tng-talk': 0, 'br-talk': 0, 'br-rain': 0, tune: 0, pad: 0 };
+  let fxPulse = 0;
+  if (B.audio) B.audio.onPlay = (name) => {
+    const w = name in QUIET ? QUIET[name] : LOUD[name] || 0.4;
+    fxPulse = Math.max(fxPulse, w);
+  };
   /** How much of the telly the street is covering right now (1 = none of it). */
   function streetMask(s) {
     let traffic = 0;
@@ -143,7 +151,8 @@
     }
     const w = s.weather || {};
     const door = (s.door && s.door.openT) > 0 ? 1 : 0;
-    let m = 1 - 0.6 * traffic - 0.35 * (w.rain || 0) - 0.15 * door - 0.2 * Math.max(0, (w.cloud || 0) - 0.7);
+    const fx = B.audio && B.audio.levels ? Math.min(1, B.audio.levels.fx / 0.8) : 1; // (you can't be drowned out by what you can't hear)
+    let m = 1 - fx * (0.7 * traffic + 0.35 * (w.rain || 0) + 0.15 * door + 0.2 * Math.max(0, (w.cloud || 0) - 0.7) + 0.65 * fxPulse);
     // a still, empty street late in the evening lets it through
     const h = s.hour;
     const late = h >= 21.5 || h < 5.5;
@@ -156,16 +165,18 @@
     const dt = lastT ? clamp(now - lastT, 0, 0.25) : 0;
     lastT = now;
     openK += ((panelOpen() ? 1 : 0) - openK) * clamp(dt / 0.45, 0, 1); // a fade, not a jump
+    fxPulse *= Math.exp(-dt / 0.5); // each effect's cover lasts about as long as it does
     const target = streetMask(s);
-    duckK += (target - duckK) * clamp(dt / (target < duckK ? 0.25 : 0.9), 0, 1); // ducks quickly, recovers slowly
+    duckK += (target - duckK) * clamp(dt / (target < duckK ? 0.06 : 0.9), 0, 1); // ducks at once, recovers slowly
   }
   function level() {
     const A = B.audio;
     if (!A || !A.enabled) return 0;
     const v = A.levels ? A.levels.music : 0.8;
     const base = Math.min(1, 1.25 * v * v);
-    const far = 0.22 * duckK;
-    return Math.round(clamp(base * (far + (1 - far) * openK), 0, 1) * 100);
+    const far = 0.18 * duckK;
+    const near = 1 - 0.35 * (1 - Math.min(1, duckK)); // the close-up: you're in the flat, but the street still cuts in a little
+    return Math.round(clamp(base * (far + (near - far) * openK), 0, 1) * 100);
   }
   function applyVolume(force) {
     const v = level();

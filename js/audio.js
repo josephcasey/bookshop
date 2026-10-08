@@ -494,6 +494,7 @@
     } catch (e) {
       console.warn('[bookshop] sfx', name, e);
     }
+    if (A.onPlay) A.onPlay(name); // (the telly upstairs listens: the street's sounds cover it)
   };
   /** Add a sound for content: B.audio.define('meow', ({tone, noise}) => tone(700, .3, {slide: 500})) */
   A.define = (name, fn) => {
