@@ -1,6 +1,7 @@
 /* 2026-10-07 (the air-con unit)
- * 2026-10-08: the classic street has one too now (a cream box on the brickwork, same spot), and a fast fan no longer
- * smears into a still grey disc: a blade catches the light as it whirls, so you can always see it turning.
+ * 2026-10-08: the classic street has one too now (a cream box on the brickwork, same spot). The fan always shows its
+ * three blades (SCH-26): however fast it really spins, they're drawn turning at a pace the eye can follow (the way a
+ * camera catches a fan), never smeared into a disc.
  * The neon theme's air-con box between the flat's windows comes alive: the fan spins (fast on hot afternoons,
  * idling at night), the louvres shiver, condensate drips from the tray into the rust stain and splashes on the
  * sill below, a heat shimmer rises off the exhaust by day and a breath of vapour puffs out on cold nights. */
@@ -21,8 +22,8 @@
     draw(g, s) {
       const cy = cyber();
       const K = cy
-        ? { blade: '#5d6577', gap: '#1c1f26', smear: '#434a58', smearO: '#3a404d', hub: '#6d7587', lv: '#353a46', lvS: '#3e4451', glint: '#8a93a8' }
-        : { blade: '#b8b0a0', gap: '#4a4640', smear: '#8a8478', smearO: '#7a746a', hub: '#d8d0c0', lv: '#a8a090', lvS: '#bab2a2', glint: '#f0ead8' };
+        ? { blade: '#5d6577', gap: '#1c1f26', hub: '#6d7587', lv: '#353a46', lvS: '#3e4451' }
+        : { blade: '#b8b0a0', gap: '#4a4640', hub: '#d8d0c0', lv: '#a8a090', lvS: '#bab2a2' };
       if (!cy) {
         // the classic street's unit (the neon one is part of its facade): a cream box with a round grille and louvres,
         // on a pair of brackets, a rust streak under its drip tray
@@ -45,10 +46,9 @@
       last = now;
       const P = B.sunPos ? B.sunPos(s.hour) : { e: 20 };
       const hot = Math.max(0, Math.min(1, (P.e + 5) / 35)); // works hardest in the afternoon sun
-      const rps = 0.4 + 3.6 * hot; // revolutions per second
+      const rps = 0.25 + 0.9 * hot; // revolutions per second, as seen: lazy at night, brisk in the afternoon sun
       phase = (phase + rps * dt) % 1;
-      // the fan: three blades seen through the grille, smeared into a disc when it's going fast
-      const blur = rps > 2.2;
+      // the fan: three blades seen through the grille
       for (let y = -4; y <= 4; y++)
         for (let x = -4; x <= 4; x++) {
           const r2 = x * x + y * y;
@@ -56,14 +56,8 @@
           let a = Math.atan2(y, x) / (Math.PI * 2) - phase;
           a = ((a * 3) % 1 + 1) % 1; // three blades
           const onBlade = a < 0.33;
-          const c = blur ? (r2 > 9 ? K.smearO : K.smear) : onBlade ? K.blade : K.gap;
-          if ((x + y) % 2 === 0 || !blur) B.px(g, c, CX + x, CY + y);
+          B.px(g, onBlade ? K.blade : K.gap, CX + x, CY + y);
         }
-      if (blur) {
-        // at speed the eye catches one blade at a time: a glint sweeping round (the wagon-wheel effect, slowed so it reads)
-        const ga = (now * (0.9 + 0.8 * hot)) % 1;
-        for (let r = 2; r <= 4; r++) B.px(g, K.glint, CX + Math.round(Math.cos(ga * Math.PI * 2) * r), CY + Math.round(Math.sin(ga * Math.PI * 2) * r));
-      }
       B.px(g, K.hub, CX, CY); // the hub
       // louvres on the exhaust side shiver in the airflow
       const shiver = Math.sin(now * (6 + 20 * hot)) > 0.3 ? 1 : 0;
