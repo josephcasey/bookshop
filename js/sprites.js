@@ -363,8 +363,19 @@
       // demi-plie: the arms hold second, breathing down with the knees
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 1.6, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, hold: true },
-        { t: 2.0, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1 },
+        { t: 1.6, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, headDx: 1, hold: true },
+        { t: 2.0, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, headDx: 1 },
+        { t: 4.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
+      ],
+      4.0,
+      { base: { legs: LEGS.plie } },
+    ),
+    plieB: keyed(
+      // the second demi-plie: the head inclines the other way
+      [
+        { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
+        { t: 1.6, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, headDx: -1, hold: true },
+        { t: 2.0, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, headDx: -1 },
         { t: 4.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
       4.0,
@@ -376,7 +387,7 @@
         { t: 1.4, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 2 },
         { t: 2.6, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
         { t: 3.0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
-        { t: 4.4, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]], bob: 2 },
+        { t: 4.4, f: [[3, 6], [-3, 8]], b: [[-3, 6], [3, 8]], bob: 2 },
         { t: 6.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
       6.0,
@@ -388,8 +399,8 @@
       [
         { t: 0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], hold: true },
         { t: 0.9, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]] },
-        { t: 1.5, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]], hold: true },
-        { t: 2.4, f: [[4, 5], [-3, 8]], b: [[-4, 5], [3, 8]] },
+        { t: 1.5, f: [[3, 6], [-3, 8]], b: [[-3, 6], [3, 8]], hold: true },
+        { t: 2.4, f: [[3, 6], [-3, 8]], b: [[-3, 6], [3, 8]] },
         { t: 3.0, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1 },
         { t: 3.2, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -2, hold: true },
         { t: 3.4, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1, hold: true },
@@ -417,8 +428,8 @@
     pirprep: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.6, f: [[4, 5], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
-        { t: 0.8, f: [[4, 5], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.6, f: [[3, 6], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.8, f: [[3, 6], [-3, 8]], b: [[-6, 1], [-11, 3]], bob: 2 },
       ],
       0.8,
       { once: true },
@@ -504,7 +515,7 @@
   const BACK_POSES = { browse: 1, shelve: 1, backstand: 1, backwave: 1, dust: 1 };
   const SIT_POSES = { sit: 1, sitread: 1, situke: 1 };
   B.isDancePose = (p) => !!DANCE_POSES[p];
-  const DANCE_POSES = { barreplie: 1, barreturn: 1, barrepdb: 1, barre: 1, plie: 1, grandplie: 1, portdebras: 1, arabesque: 1, pirprep: 1, pirouette: 1, pirland: 1, reverence: 1, charleston: 1, ukulele: 1, situke: 1 };
+  const DANCE_POSES = { barreplie: 1, barreturn: 1, barrepdb: 1, barre: 1, plie: 1, plieB: 1, grandplie: 1, portdebras: 1, arabesque: 1, pirprep: 1, pirouette: 1, pirland: 1, reverence: 1, charleston: 1, ukulele: 1, situke: 1 };
   const stretch = (arm) => arm.map(([x, y]) => [Math.round(x * AR), Math.round(y * AR)]);
 
   function metrics(a) {
@@ -797,9 +808,9 @@
     P(lit(skin, -1), cx - 1, hy + 8, 3, sy - hy - 8); // neck, in the head's shadow
     if (side && B.theme !== 'cyber' && DANCE_POSES[pose]) {
       // a dark edge along the back and crown of her head, so it doesn't melt into the lamp-lit plaster
-      // (the hair drawn a pixel back and up, then covered by the real hair and head)
+      // (the hair drawn a pixel back, then covered by the real hair and head)
       const hs = HAIR[L.hairStyle] || HAIR.short;
-      spans(g, hs.side, hx - fd, hy - 1, fd, '#4a3426', '#4a3426');
+      spans(g, hs.side, hx - fd, hy, fd, '#4a3426', '#4a3426');
     }
     // head: rounded, narrowing to the jaw
     P(skin, hx + 1, hy, 6, 1);
@@ -949,7 +960,7 @@
         case 'uke': {
           // a little ukulele held across the body: the body at the strumming hand, the neck out to the fretting hand
           const ux = cx - 3;
-          const uy = sy + 8;
+          const uy = sy + 8 + (spec.streak ? 1 : 0); // the instrument gives under the down-stroke
           const body = B.theme === 'cyber' ? '#3ff5ff' : '#c03a2a'; // red, to stand out from her cardigan
           P(body, ux, uy, 7, 4);
           P(body, ux + 1, uy - 1, 4, 1);
@@ -958,7 +969,7 @@
           P('#1a1010', ux + 3, uy + 1, 2, 2); // the sound hole
           B.line(g, ux + (fd > 0 ? 0 : 6), uy + 1, bh[0], bh[1] - 1, '#7a4a20'); // the neck
           P('#e8dcc0', Math.round((ux + (fd > 0 ? 0 : 6) + bh[0]) / 2), Math.round((uy + 1 + bh[1] - 1) / 2), 1, 1); // a fret dot
-          P('#e8dcc0', bh[0] - 1, bh[1] - 2, 2, 1); // the headstock
+          P('#e8dcc0', bh[0] - 1, bh[1] - 2 - (spec.streak ? 1 : 0), 2, 1); // the headstock
           if (spec.streak) P(B.theme === 'cyber' ? '#9ff8ff' : '#f0d8b8', fh[0], fh[1] - 3, 1, 2); // the strum's motion trail
           break;
         }

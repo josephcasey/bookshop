@@ -172,7 +172,8 @@
       // then the centre, in front of the dark arch
       yield o.go(88);
       o.face(0);
-      yield o.hold('plie', 8); // two demi-plies
+      yield o.hold('plie', 4); // two demi-plies, the head inclining one way, then the other
+      yield o.hold('plieB', 4);
       if (B.chance(0.5)) yield o.hold('grandplie', 6);
       yield o.hold('portdebras', 6);
       o.face(1);
