@@ -40,6 +40,7 @@ window.Bookshop.manifest = [
   // ---- programmes on Mabel's telly (see features/tv.js) ----
   'shows/tng.js',
   'shows/bladerunner.js',
+  'shows/youtube.js',
 
   // ---- daily content (only on particular dates) ----
   'daily/2026-09-29.js',

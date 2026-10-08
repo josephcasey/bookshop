@@ -387,6 +387,18 @@ body.idle #timepanel {
   margin: 0 0 8px;
   color: var(--accent);
 }
+.tvpanel.wide {
+  width: min(440px, calc(100vw - 32px));
+}
+.tvYouTube {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 6px solid #1a1a20;
+  border-radius: 6px;
+  box-sizing: border-box;
+  background: #050507;
+}
 #tvCanvas {
   display: block;
   width: 100%;

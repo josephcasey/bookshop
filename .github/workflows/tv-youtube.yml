@@ -1,0 +1,27 @@
+# Keeps Mabel's telly on the newest "Lawrence:" video from youtube.com/@msnow (see tools/update-tv-youtube.py).
+name: Telly - latest YouTube video
+on:
+  schedule:
+    - cron: '17 */2 * * *' # every two hours
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find the newest matching video
+        run: python3 tools/update-tv-youtube.py
+      - name: Commit and republish if it changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet content/tv/youtube.json; then echo "no change"; exit 0; fi
+          git config user.name "telly-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Telly: latest video $(python3 -c "import json;print(json.load(open('content/tv/youtube.json'))['id'])")" content/tv/youtube.json
+          git push
+          # pushes made with the workflow token don't start a Pages build on their own
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" || true
