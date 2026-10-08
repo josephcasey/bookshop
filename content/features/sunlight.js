@@ -535,7 +535,14 @@
         let c;
         if (sky) c = B.mix(skyTop, skyBot, clamp((sk + 5 - Hh) / 4, 0, 1)); // deeper higher up, palest just above the roofs
         else if (g.skyOnly && Hh >= 0) continue;
-        else if (g.skyOnly) c = cyber() ? '#24222c' : B.mix('#55524e', '#2a2830', clamp(-Hh / 2, 0, 1)); // the road, darker nearer
+        else if (g.skyOnly) {
+          // the road: dark asphalt reflects little (it was hidden behind the old stall-riser; with the glass now
+          // running to the floor it shows, SCH-25), fading out lower down, and after dark nothing at all
+          if (P.e < -3) continue;
+          const k = clamp((P.e + 3) / 9, 0, 1) * (1 - clamp(-Hh / 1.5, 0, 1));
+          if (k < 0.05) continue;
+          c = B.mix('#000000', cyber() ? '#24222c' : '#3a3836', k);
+        }
         else c = sk < 1 && Hh >= 0.3 ? (dusk ? (Hh > 1.2 && Hh < 1.8 && (x & 3) === 0 ? '#a87840' : '#1c1a24') : B.mix(wall, '#2a2a38', 0.6)) : frontage(xm, Hh, wall, dusk);
         g.fillStyle = c;
         g.fillRect(x, y, 1, 1);

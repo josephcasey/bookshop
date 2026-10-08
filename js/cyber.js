@@ -899,7 +899,7 @@
     }
     // keypad light and the LED strip under the window sill
     px(g, s.shop.locked ? C.red : C.acid, 264, 119, 1, 1);
-    px(g, lit ? '#3ff5ff' : '#1e4a52', 6, 147, 208, 1);
+    px(g, lit ? '#3ff5ff' : '#1e4a52', 6, B.LAYOUT.sillY + 3, 208, 1); // (moved down with the sill, SCH-25)
   }
 
   function drawChalkboard(g, s) {
