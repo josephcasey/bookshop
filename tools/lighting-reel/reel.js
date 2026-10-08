@@ -456,3 +456,72 @@ async function shoot(tag, emit, report) {
   B._lightAdaptInstant = false;
   return report.length ? report : 'saved';
 }
+
+// ---------- Mabel's dances: filmstrips for the dance and animation reviewers ----------
+//   await reel.dance('d1')   -> out/d1-M-dance-<theme>.png
+export async function dance(tag = 'dance', themes = ['classic']) {
+  const now0 = performance.now.bind(performance);
+  const live = B.world;
+  B.holdFrame = true;
+  const theme0 = B.theme;
+  try {
+    const fresh = B.createWorld();
+    fresh.mode = 'story';
+    B.settle(fresh);
+    B.emit('ready', fresh);
+    fresh.litter = [];
+    fresh.npcs.length = 0;
+    B.world = fresh;
+    const s = fresh;
+    const o = s.owner;
+    const g = document.querySelector('#screen').getContext('2d');
+    const frameC = () => {
+      B.render(g, s);
+      const c = document.createElement('canvas');
+      c.width = 320;
+      c.height = 180;
+      c.getContext('2d').drawImage(g.canvas, 0, 0);
+      return c;
+    };
+    // each routine: [label, x, steps: [pose, dir, backView, t] x8]
+    const at = (pose, dir, x, ts, back = () => false, dirs = null) => ts.map((t, i) => [pose, dirs ? dirs[i] : dir, back(i), t, x]);
+    const T8 = [0, 0.12, 0.25, 0.37, 0.5, 0.62, 0.75, 0.87];
+    const SLOW = T8.map((t) => t * 4);
+    const SPIN = [0, 1, 0, -1, 0, 1, 0, -1];
+    const ROWS = [
+      ['barre (counter top)', at('barre', 1, 140, SLOW)],
+      ['plie', at('plie', 0, 88, T8.map((t) => t * 3))],
+      ['port de bras', at('portdebras', 0, 88, SLOW)],
+      ['arabesque', at('arabesque', 1, 88, SLOW)],
+      ['pirouette (spin facings)', at('pirouette', 0, 88, T8, (i) => i % 4 === 2, SPIN)],
+      ['reverence', at('reverence', 0, 88, SLOW)],
+      ['charleston', at('charleston', 0, 88, T8)],
+      ['ukulele (strum)', at('ukulele', 0, 107, T8)],
+    ];
+    for (const theme of themes) {
+      B.setTheme(theme);
+      B.jumpTo(s, 15);
+      await sleep(100);
+      s.npcs.length = 0;
+      const W0 = 64;
+      const H0 = 64;
+      const sh = sheet(8, ROWS.length, W0, H0, 3, 16);
+      let k = 0;
+      for (const [label, steps] of ROWS) {
+        for (const [pose, dir, back, t, x] of steps) {
+          Object.assign(o, { area: 'inside', depth: 'back', x, moving: false, pose, hidden: false, dir, backView: back, holding: null, emoteKind: null });
+          o.t = t;
+          performance.now = () => 1000000 + t * 1000;
+          const c = frameC();
+          sh.put(k++, c, x - 32, 84, `${label} ${t.toFixed(2)}s`);
+        }
+      }
+      await save(`${tag}-M-dance-${theme}`, sh.c);
+    }
+  } finally {
+    B.world = live;
+    B.holdFrame = false;
+    performance.now = now0;
+    B.setTheme(theme0);
+  }
+}

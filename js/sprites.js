@@ -244,6 +244,32 @@
     },
   };
 
+  /** A keyframed pose: keys [{ t, f, b, bob?, ease? }] over a cycle of `dur` seconds (looping unless once). Arms
+   *  are interpolated key to key (eased in and out), so a move flows through its in-betweens rather than snapping;
+   *  the hand positions are moved along the shortest arc around the shoulder for sweeping arm paths. */
+  const ease = (k) => k * k * (3 - 2 * k);
+  function keyed(keys, dur, opts = {}) {
+    const lerp2 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+    const arm = (A, Bm, k) => [lerp2(A[0], Bm[0], k), lerp2(A[1], Bm[1], k)].map(([x, y]) => [Math.round(x), Math.round(y)]);
+    const fn = (t) => {
+      let u = opts.once ? Math.min(t, dur - 1e-3) : ((t % dur) + dur) % dur;
+      let i = 0;
+      while (i < keys.length - 1 && keys[i + 1].t <= u) i++;
+      const A = keys[i];
+      const Bk = keys[i + 1] || (opts.once ? A : Object.assign({}, keys[0], { t: dur }));
+      const span = Math.max(1e-3, Bk.t - A.t);
+      const k = (A.hold ? 0 : 1) * (A.ease === 'linear' ? (u - A.t) / span : ease(Math.min(1, Math.max(0, (u - A.t) / span))));
+      const spec = Object.assign({}, opts.base || {}, { f: arm(A.f, Bk.f, k), b: arm(A.b, Bk.b, k) });
+      spec.bob = Math.round((A.bob || 0) + ((Bk.bob || 0) - (A.bob || 0)) * k);
+      if (A.legs) spec.legs = A.legs;
+      if (A.item || opts.item) spec.item = A.item || opts.item;
+      return spec;
+    };
+    fn.keyed = true;
+    return fn;
+  }
+  B.keyedPose = keyed;
+
   const POSES = {
     // ballet: at the barre, plie, port de bras, arabesque, pirouette, the reverence
     barre: (t) => ({ f: [[3, 8], [8, 15]], b: [[-1, -8], [2 - osc(t, 0.5), -15]], legs: LEGS.barre }), // a hand on the barre, the other en haut
@@ -387,6 +413,10 @@
     if (!a.moving && a.happy && (pose === 'stand' || pose === 'read') && osc(t, 2, 4) === 0) bob = -1;
     if (pose === 'cheer' || pose === 'clap') bob = -osc(t, 4);
     if (pose === 'plie') bob = Math.round(2 + 2 * Math.sin(t * 2.2)); // down and up through the knees
+    {
+      const pre = POSES[pose] && POSES[pose].keyed ? POSES[pose](t) : null;
+      if (pre && pre.bob != null) bob = pre.bob; // keyframed poses carry their own rise and fall
+    }
     if (pose === 'reverence') bob = 2;
     if (pose === 'charleston') bob = osc(t, 4) ? -1 : 0;
     if (pose === 'arabesque' || pose === 'pirouette') bob = -1; // up on the toes
