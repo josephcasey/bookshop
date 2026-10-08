@@ -186,7 +186,8 @@
         // her pick, unless the viewer has just chosen something
         if (!((U2.chosenUntil || 0) > s.simT)) {
           const list = shows();
-          const fav = B.weighted ? B.weighted(list, (sh) => 0.3 + Math.max(0, sh.likes || 0)) : B.pick(list);
+          // a programme can insist (a new episode she hasn't seen through yet); otherwise her tastes decide
+          const fav = list.find((sh) => sh.preferred && sh.preferred(s)) || (B.weighted ? B.weighted(list, (sh) => 0.3 + Math.max(0, sh.likes || 0)) : B.pick(list));
           if (fav && fav.id !== U2.show) {
             U2.show = fav.id;
             U2.tvT = 0;
@@ -198,7 +199,12 @@
         B.log(sh ? `${name()} settles into her armchair for ${sh.name}.` : `${name()} settles into her armchair in front of the telly.`);
         const dur = B.rnd(30, 60);
         let t = 0;
-        while (t < dur) {
+        // a programme with an end of its own (a real video) is watched to the end; otherwise half a minute or so
+        const more = () => {
+          const cur = tv.show(s);
+          return cur && cur.untilEnd ? t < 8 || cur.untilEnd(s) : t < dur;
+        };
+        while (more()) {
           yield 2;
           t += 2;
           if (o.energy < 0.3 && B.chance(0.06)) {
