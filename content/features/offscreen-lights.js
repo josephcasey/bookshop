@@ -134,7 +134,7 @@
     const g = c.getContext('2d', { willReadFrequently: true }); // CPU-backed, like the main canvas (mixing the two costs transfers)
     return [c, g];
   };
-  let lm, lg, vc, vg, sc, sg2, rc, rg, pc, pg, qc, qg, ac, ag, bc, bgx, fc, fgx, hc, hgx, tc, tgx;
+  let lm, lg, vc, vg, sc, sg2, rc, rg, pc, pg, qc, qg, ac, ag, bc, bgx, fc, fgx, hc, hgx, tc, tgx, spc, spg;
   let mainCanvas = null;
   let quietT = -1;
   let quietFrame = -1;
@@ -150,6 +150,7 @@
     [qc, qg] = mk(); // light through the windows (normal)
     [ac, ag] = mk(); // light through the windows (additive glare)
     [bc, bgx] = mk(); // a projected patch before its shadows are cut
+    [spc, spg] = mk(); // the steady lights split between the wall and what stands in front of it
     [fc, fgx] = mk(); // the shadows inside a patch
     [hc, hgx] = mk(); // the scene's local mean colours, for quieting texture in shadow
     tc = document.createElement('canvas');
@@ -942,6 +943,7 @@
         pg.globalAlpha = pa;
         for (const [a2, z] of room.people(s)) {
           if (z >= Z - 1 || z <= -(src.D + dD) + 4) continue;
+          if (rcv.vis && z > 0 && Z === 13 && z < 15) continue; // (they're this depth's own pixels: never their own shadow)
           if (z < 0 && src.y < B.headTop(a2)) continue; // a light above their head throws their shadow on the ground, not into the shop
           let [fx, fy, m] = at(a2.x, a2.y, z, ox, dD);
           if (m > 2.2) {
@@ -962,6 +964,21 @@
       pg.imageSmoothingEnabled = false;
       pg.restore();
       if (F.bands) quantise(pg, 3, 0.8, true, RB);
+      if (!layered && room === SHOP && spg) {
+        const V = visMasks(s);
+        if (V[4]) {
+          spg.globalCompositeOperation = 'source-over';
+          spg.clearRect(0, 0, W, H);
+          spg.drawImage(bc, 0, 0);
+          spg.globalCompositeOperation = 'destination-out';
+          spg.drawImage(V[4], 0, 0); // the uncut light, off the wall: the props and people in front take it whole
+          spg.globalCompositeOperation = 'source-over';
+          pg.globalCompositeOperation = 'destination-in';
+          pg.drawImage(V[4], 0, 0); // the shadowed light, on the wall only
+          pg.globalCompositeOperation = 'source-over';
+          pg.drawImage(spc, 0, 0);
+        }
+      }
       if (rcv.vis) {
         // only on the pixels this depth owns
         for (const c of [pg, bgx]) {

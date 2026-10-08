@@ -85,6 +85,7 @@ The golden sheets in `tools/lighting-reel/golden/` are the reference frames. `to
 - **The glass's reflection is helped in the room's darks.** Physically, transmitted and reflected light simply add (screen already hides a reflection over bright surfaces). The reflection is additionally scaled by the room's darkness, floored at 0.4 by day and 0.8 at night, a bend of at most 60% by day and 20% at night, so the shop stays legible.
 - **The lettered transom** doesn't carry the reflection (its gold leaf would mirror the first floors opposite); the labels stay readable.
 - **Shadows from the shop's lamps are capped in size:** a prop's shadow at most 2.4x, a person's 2x (someone just behind a pendant would really throw a 10x shadow across the whole wall), and the bulb's penumbra at 3 px. Big enough to read, never a wall-sized blot.
+- **Nearer is brighter, capped:** inside, a surface nearer a headlamp than the back wall gets ((40+D)/(z+D))^2 its light, capped at 2.2x, so the front props hit the top band at the hotspot. The faint steady lights across the road project once (on the wall) and light everything in front of the wall unshadowed.
 - **The pub and chippy prints** come from sources 7.8 m out; their mirror images are at 22 m. The near distance is a deliberate gain (the locked night look).
 
 ## The Lighting Lab

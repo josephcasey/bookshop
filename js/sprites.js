@@ -246,20 +246,23 @@
 
   const POSES = {
     // ballet: at the barre, plie, port de bras, arabesque, pirouette, the reverence
-    barre: (t) => ({ f: [[4, 3], [10, 5]], b: [[0, -8], [3 - osc(t, 0.5), -15]], legs: LEGS.barre }),
+    barre: (t) => ({ f: [[3, 8], [8, 15]], b: [[-1, -8], [2 - osc(t, 0.5), -15]], legs: LEGS.barre }), // a hand on the barre, the other en haut
     plie: () => ({ f: [[5, 4], [9, 9]], b: [[-5, 4], [-9, 9]], front: { f: [[5, 4], [9, 9]], b: [[-5, 4], [-9, 9]] }, legs: LEGS.plie }),
     portdebras: (t) => (osc(t, 0.6) ? { f: [[2, -8], [-1, -15]], b: [[-2, -8], [1, -15]] } : { f: [[5, 3], [10, 2]], b: [[-5, 3], [-10, 2]] }),
-    arabesque: () => ({ f: [[4, -4], [10, -7]], b: [[-4, 3], [-10, 5]], legs: LEGS.arabesque }),
+    arabesque: () => ({ f: [[5, -1], [11, -2]], b: [[-4, 1], [-10, 1]], legs: LEGS.arabesque }), // reaching forward at shoulder height
     pirouette: () => ({ f: [[2, -8], [-1, -15]], b: [[-2, -8], [1, -15]], legs: LEGS.retire }),
     reverence: () => ({ f: [[4, 6], [9, 12]], b: [[-4, 6], [-9, 12]] }),
     // the Charleston: arms swinging against the kicks
     charleston: (t) => {
+      // bent elbows swinging alternately, hands open (jazz hands), pearls swinging
       const k = osc(t, 4);
-      return k ? { f: [[4, -2], [8, -8]], b: [[-4, 5], [-8, 10]], legs: (o) => LEGS.charleston(o, 1) } : { f: [[4, 5], [8, 10]], b: [[-4, -2], [-8, -8]], legs: (o) => LEGS.charleston(o, 0) };
+      return k
+        ? { f: [[4, 6], [8, 2]], b: [[-4, 6], [-7, 11]], item: 'jazz', legs: (o) => LEGS.charleston(o, 1) }
+        : { f: [[4, 6], [7, 11]], b: [[-4, 6], [-8, 2]], item: 'jazz', legs: (o) => LEGS.charleston(o, 0) };
     },
     // the ukulele: fretting with the back hand, strumming with the front
-    ukulele: (t) => ({ f: [[2, 7], [2 + osc(t, 6), 10]], b: [[-3, 5], [-8, 2]], item: 'uke' }),
-    situke: (t) => ({ f: [[2, 7], [2 + osc(t, 6), 10]], b: [[-3, 5], [-8, 2]], item: 'uke' }),
+    ukulele: (t) => ({ f: [[2, 7], [2 + osc(t, 6), 9 + osc(t, 6)]], b: [[-3, 4], [-8, 0]], item: 'uke' }),
+    situke: (t) => ({ f: [[2, 7], [2 + osc(t, 6), 9 + osc(t, 6)]], b: [[-3, 4], [-8, 0]], item: 'uke' }),
     reach: () => ({ f: UP_F }),
     shelve: () => ({ f: [[0, -7], [0, -14]], b: [[0, 8], [0, 15]] }),
     browse: (t) => (osc(t, 0.8, 3) === 0 ? { f: [[0, -6], [0, -13]] } : { f: [[1, 8], [0, 12]] }),
@@ -675,14 +678,25 @@
           // a little ukulele held across the body: the body at the strumming hand, the neck out to the fretting hand
           const ux = cx - 3;
           const uy = sy + 8;
-          P('#c8843a', ux, uy, 7, 4);
-          P('#c8843a', ux + 1, uy - 1, 4, 1);
-          P(lit('#c8843a', -1), ux, uy + 3, 7, 1);
-          P('#3a2010', ux + 3, uy + 1, 2, 2); // the sound hole
-          B.line(g, ux + (fd > 0 ? 0 : 6), uy + 1, bh[0], bh[1] - 1, '#7a4a20'); // the neck
+          const body = B.theme === 'cyber' ? '#3ff5ff' : '#c03a2a'; // red, to stand out from her cardigan
+          P(body, ux, uy, 7, 4);
+          P(body, ux + 1, uy - 1, 4, 1);
+          P(lit(body, -1), ux, uy + 3, 7, 1);
+          P('#f0e0c0', ux, uy, 1, 4); // a pale rim
+          P('#1a1010', ux + 3, uy + 1, 2, 2); // the sound hole
+          B.line(g, ux + (fd > 0 ? 0 : 6), uy + 1, bh[0], bh[1] - 1, '#2a1a10'); // the neck
           P('#e8dcc0', bh[0] - 1, bh[1] - 2, 2, 1); // the headstock
           break;
         }
+        case 'jazz':
+          // jazz hands, and a string of pearls swinging
+          for (const [hx2, hy2] of [fh, bh]) {
+            P(skin, hx2 - 2, hy2 - 2, 1, 1);
+            P(skin, hx2, hy2 - 3, 1, 1);
+            P(skin, hx2 + 2, hy2 - 2, 1, 1);
+          }
+          for (let i = 0; i < 5; i++) P('#f4f0e8', cx - 2 + i + (osc(t, 4) ? 1 : -1) * (i > 1 && i < 4 ? 1 : 0), sy + 3 + (i === 0 || i === 4 ? 0 : i === 2 ? 2 : 1), 1, 1);
+          break;
         case 'duster':
           P('#e87fa0', fh[0] - 2, fh[1] - 5, 4, 4);
           P('#f4a6bf', fh[0] - 1, fh[1] - 5, 2, 2);

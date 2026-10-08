@@ -141,7 +141,7 @@
       yield o.hold('portdebras', 3);
       yield o.hold('barre', 3);
       // then out on the floor
-      yield o.go(112);
+      yield o.go(88); // in front of the dark arch, where she stands out
       o.face(0);
       yield o.hold('plie', 5);
       yield o.hold('portdebras', 4);
@@ -171,7 +171,7 @@
     cooldown: 25,
     when: (s, o) => free(s, o) && station(s) === 'wwoz',
     *run(s, o) {
-      yield o.go(112);
+      yield o.go(88);
       o.face(0);
       B.log(B.pick([`WWOZ gets ${name()} doing the Charleston.`, `${name()} can't resist a Charleston to the New Orleans jazz.`]));
       yield o.hold('charleston', 6);
