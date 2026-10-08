@@ -33,6 +33,7 @@ window.Bookshop.manifest = [
   'features/street-crew.js',
   'features/aircon.js',
   'features/shop-lamps.js',
+  'features/mabel-dances.js',
   'features/radio-tuner.js',
   'features/live-radio.js',
   'features/tv.js',
