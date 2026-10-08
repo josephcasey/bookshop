@@ -173,10 +173,13 @@
     const A = B.audio;
     if (!A || !A.enabled) return 0;
     const v = A.levels ? A.levels.music : 0.8;
-    const base = Math.min(1, 1.25 * v * v);
-    const far = 0.18 * duckK;
+    if (v < 0.02) return 0;
+    // the radio's loudness at this slider (its curve, 1.5 v^2, times the stream's 1.6 gain), so the telly sits with it;
+    // through the flat's window it's about half the radio (it used to be a tenth: at a low slider it read as silent)
+    const base = Math.min(1, 2.4 * v * v);
+    const far = 0.45 * duckK;
     const near = 1 - 0.35 * (1 - Math.min(1, duckK)); // the close-up: you're in the flat, but the street still cuts in a little
-    return Math.round(clamp(base * (far + (near - far) * openK), 0, 1) * 100);
+    return Math.round(clamp(Math.max(base * (far + (near - far) * openK), 0.05 * duckK), 0, 1) * 100); // never below a murmur
   }
   function applyVolume(force) {
     const v = level();
@@ -209,6 +212,8 @@
       if (i && typeof i === 'object') {
         if (typeof i.currentTime === 'number') info.pos = i.currentTime;
         if (typeof i.duration === 'number' && i.duration > 0) info.dur = i.duration;
+        if (typeof i.muted === 'boolean') info.muted = i.muted; // what the player says it's doing, not what we asked
+        if (typeof i.volume === 'number') info.volume = i.volume;
         if (typeof i.playerState === 'number') {
           if (info.state !== i.playerState && i.playerState === 1) applyVolume(true); // (re)started: make it audible
           info.state = i.playerState;
@@ -232,6 +237,8 @@
     const start = info.ended ? 0 : Math.floor(info.pos || 0);
     info.ended = false;
     info.state = null;
+    info.muted = null;
+    info.volume = null;
     info.startedAt = Date.now();
     // starts muted (browsers only autoplay silently), then unmutes once the player is ready
     frame.src = `https://www.youtube-nocookie.com/embed/${info.id}?autoplay=1&mute=1&playsinline=1&rel=0&controls=1&enablejsapi=1&start=${start}&origin=${origin}`;
@@ -290,6 +297,14 @@
     }
     place();
     applyVolume(false);
+    // the unmute can be lost (sent before the player listens) or refused (autoplay rules): until the player itself
+    // reports it's audible, keep asking, once a second
+    const want = level();
+    const deaf = want > 0 && (player.info.muted === true || (typeof player.info.volume === 'number' && Math.abs(player.info.volume - want) > 4));
+    if (deaf && Date.now() - (player.fixedAt || 0) > 1000) {
+      player.fixedAt = Date.now();
+      applyVolume(true);
+    }
     // while she's watching with the close-up shut, keep it going (unstarted, cued or stalled): you can pause it yourself
     // in the close-up
     const st = player.info.state;
