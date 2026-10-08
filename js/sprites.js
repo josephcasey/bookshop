@@ -578,6 +578,7 @@
   B.styleLook = B.styleLook || ((L) => L);
 
   function paintPerson(g, a, cx, fy) {
+    if (a.robot && B.paintRobot) return B.paintRobot(g, a, cx, fy); // the pavement delivery robots (delivery-robots.js)
     const P = (c, x, y, w = 1, h = 1) => {
       g.fillStyle = c;
       g.fillRect(x, y, w, h);
