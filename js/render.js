@@ -855,6 +855,14 @@
 
   function drawDisplay(g, s) {
     const cols = s.display.cols;
+    // the window display stands on two low benches at the old sill height (the glass now runs to the floor, and
+    // the middle is kept clear: she dances there): a board, its lit edge, a front lip, two legs each
+    for (const [x0, w] of [[9, 62], [186, 25]]) {
+      px(g, WOOD, x0, 144, w, 2);
+      px(g, '#8a5a36', x0, 144, w, 1);
+      px(g, WOOD_D, x0, 146, w, 1);
+      for (const lx of [x0 + 2, x0 + w - 4]) px(g, WOOD_D, lx, 147, 2, 14);
+    }
     const wet = s.plant.water > 0.3;
     // plant
     px(g, '#b0673f', 11, 135, 11, 9);

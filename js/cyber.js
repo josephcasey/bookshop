@@ -743,6 +743,14 @@
   }
 
   function drawDisplay(g, s) {
+    // the window display stands on two low benches at the old sill height (the glass now runs to the floor, and
+    // the middle is kept clear: she dances there): a board, its lit edge, a front lip, two legs each
+    for (const [x0, w] of [[9, 62], [186, 25]]) {
+      px(g, '#3a3f4a', x0, 144, w, 2);
+      px(g, '#5a6070', x0, 144, w, 1);
+      px(g, '#22252e', x0, 146, w, 1);
+      for (const lx of [x0 + 2, x0 + w - 4]) px(g, '#22252e', lx, 147, 2, 14);
+    }
     const cols = s.display.cols;
     const wet = s.plant.water > 0.3;
     // a bonsai under a grow light

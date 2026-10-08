@@ -5,13 +5,13 @@
 (function (B) {
   const name = () => B.ownerName();
 
-  // Surfaces the cat can be on. y is paw level. The floor is hidden below the window sill,
-  // so jumping down makes the cat vanish and jumping up makes it pop into view.
+  // Surfaces the cat can be on. y is paw level. 'sill' is the window-display bench by the glass (left of the
+  // dancing floor); the floor shows through the tall window, just above the low sill.
   const SURF = {
-    sill: { y: 143, x: [72, 188], layer: 'interior-front' },
+    sill: { y: 143, x: [24, 66], layer: 'interior-front' },
     counter: { y: 127, x: [140, 206], layer: 'counter' },
     shelf: { y: 124, x: [18, 60], layer: 'interior-back' },
-    floor: { y: 164, x: [16, 206], layer: 'interior-back' },
+    floor: { y: 160, x: [16, 206], layer: 'interior-back' },
   };
   const C = { fur: '#d9822b', stripe: '#a85a17', white: '#f4efe2', eye: '#6fbf3f', ink: '#1e1a1a', nose: '#e8889a', ear: '#e8a0a8' };
 
@@ -31,7 +31,7 @@
       this.name = 'Marmalade';
       this.surface = 'sill';
       this.layer = SURF.sill.layer;
-      this.x = 150;
+      this.x = 46; // curled up on the display bench
       this.y = SURF.sill.y;
       this.dir = -1;
       this.pose = 'sleep';
