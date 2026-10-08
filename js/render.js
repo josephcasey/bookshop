@@ -4,6 +4,7 @@
   'use strict';
   const B = window.Bookshop;
   const px = B.px;
+  const gone = (s, k) => !!(s.stolen && s.stolen[k]); // a prop the thief took (content/features/thief.js)
   const G = '#24463d';
   const G2 = '#2f5a4e';
   const G3 = '#18302a';
@@ -760,6 +761,7 @@
   }
 
   function drawRadio(g, s) {
+    if (gone(s, 'radio')) return; // stolen (thief.js): an empty bracket until the replacement comes
     const on = s.radio.on;
     px(g, WOOD, 140, 89, 18, 11);
     px(g, WOOD_D, 140, 89, 18, 1);
@@ -800,26 +802,30 @@
   function drawCounterItems(g, s) {
     g.drawImage(B.cache.counter, 0, 0);
     const top = B.LAYOUT.counterTop - 2;
-    // desk lamp
-    px(g, '#c9a13b', 135, top, 9, 1);
-    px(g, '#c9a13b', 139, top - 8, 1, 8);
-    px(g, s.lamp ? '#3d8a5f' : '#2e6b4f', 134, top - 11, 11, 3);
-    px(g, s.lamp ? '#ffe9a8' : '#a8a080', 135, top - 8, 9, 1);
-    // phone
-    let x = 146;
-    const shaking = s.phone.ringing && s.phone.ringT % 3 < 1.1;
-    if (shaking) x += Math.floor(s.simT * 30) % 2 ? 1 : -1;
-    px(g, '#9c2b23', x, top - 4, 12, 4);
-    px(g, '#b8352b', x + 1, top - 6, 10, 2);
-    px(g, '#e8e2d0', x + 4, top - 4, 4, 3);
-    px(g, '#9c2b23', x + 5, top - 3, 2, 1);
-    if (!s.phone.offHook) {
-      px(g, '#7a1f1a', x - 1, top - 8, 14, 2);
-      px(g, '#7a1f1a', x - 1, top - 6, 2, 1);
-      px(g, '#7a1f1a', x + 11, top - 6, 2, 1);
+    if (!gone(s, 'lamp')) {
+      // desk lamp
+      px(g, '#c9a13b', 135, top, 9, 1);
+      px(g, '#c9a13b', 139, top - 8, 1, 8);
+      px(g, s.lamp ? '#3d8a5f' : '#2e6b4f', 134, top - 11, 11, 3);
+      px(g, s.lamp ? '#ffe9a8' : '#a8a080', 135, top - 8, 9, 1);
     }
-    if (shaking) {
-      for (const [dx, h] of [[-3, 3], [-5, 5], [15, 3], [17, 5]]) px(g, '#2b2622', x + dx, top - 8 - (h - 3) / 2, 1, h);
+    if (!gone(s, 'phone')) {
+      // phone
+      let x = 146;
+      const shaking = s.phone.ringing && s.phone.ringT % 3 < 1.1;
+      if (shaking) x += Math.floor(s.simT * 30) % 2 ? 1 : -1;
+      px(g, '#9c2b23', x, top - 4, 12, 4);
+      px(g, '#b8352b', x + 1, top - 6, 10, 2);
+      px(g, '#e8e2d0', x + 4, top - 4, 4, 3);
+      px(g, '#9c2b23', x + 5, top - 3, 2, 1);
+      if (!s.phone.offHook) {
+        px(g, '#7a1f1a', x - 1, top - 8, 14, 2);
+        px(g, '#7a1f1a', x - 1, top - 6, 2, 1);
+        px(g, '#7a1f1a', x + 11, top - 6, 2, 1);
+      }
+      if (shaking) {
+        for (const [dx, h] of [[-3, 3], [-5, 5], [15, 3], [17, 5]]) px(g, '#2b2622', x + dx, top - 8 - (h - 3) / 2, 1, h);
+      }
     }
     // till
     const tx = 160;

@@ -7,6 +7,7 @@
   const B = window.Bookshop;
   const K = B.renderKit;
   const px = B.px;
+  const gone = (s, k) => !!(s.stolen && s.stolen[k]); // a prop the thief took (content/features/thief.js)
   const { glow, scan, lerp, AL, wallL, wallR } = K;
 
   const C = {
@@ -639,6 +640,7 @@
   }
 
   function drawRadio(g, s) {
+    if (gone(s, 'radio')) return; // stolen (thief.js): an empty bracket until the replacement comes
     const on = s.radio.on;
     const st = s.radio.station;
     const col = (on && st.color) || '#3a3f4a';
@@ -684,30 +686,34 @@
   function drawCounterItems(g, s) {
     g.drawImage(B.cache.counter, 0, 0);
     const top = B.LAYOUT.counterTop - 2;
-    // LED arm lamp
-    px(g, '#3a3f4a', 135, top, 9, 1);
-    B.line(g, 139, top, 137, top - 6, '#5d6577');
-    B.line(g, 137, top - 6, 142, top - 10, '#5d6577');
-    px(g, '#2c303b', 139, top - 11, 7, 2);
-    px(g, s.lamp ? '#e8f6ff' : '#3a3f4a', 140, top - 9, 5, 1);
-    // phone: a sleek base and handset; a holo ring flares when it rings
-    let x = 146;
-    const ringing = s.phone.ringing && s.phone.ringT % 3 < 1.1;
-    if (ringing) x += Math.floor(s.simT * 30) % 2 ? 1 : -1;
-    px(g, '#0e0f14', x, top - 4, 12, 4);
-    px(g, '#2c303b', x + 1, top - 5, 10, 1);
-    px(g, ringing ? C.cyan : '#1e4a52', x + 3, top - 3, 6, 1);
-    if (!s.phone.offHook) {
-      px(g, '#14161c', x - 1, top - 8, 14, 2);
-      px(g, C.cyan, x + 1, top - 8, 10, 1);
-      px(g, '#14161c', x - 1, top - 6, 2, 1);
-      px(g, '#14161c', x + 11, top - 6, 2, 1);
+    if (!gone(s, 'lamp')) {
+      // LED arm lamp
+      px(g, '#3a3f4a', 135, top, 9, 1);
+      B.line(g, 139, top, 137, top - 6, '#5d6577');
+      B.line(g, 137, top - 6, 142, top - 10, '#5d6577');
+      px(g, '#2c303b', 139, top - 11, 7, 2);
+      px(g, s.lamp ? '#e8f6ff' : '#3a3f4a', 140, top - 9, 5, 1);
     }
-    if (ringing) {
-      const r = 6 + (Math.floor(s.simT * 8) % 3) * 2;
-      g.globalAlpha = 0.7;
-      for (let a = 0; a < 16; a++) px(g, C.cyan, Math.round(x + 6 + Math.cos((a / 16) * Math.PI * 2) * r), Math.round(top - 10 + Math.sin((a / 16) * Math.PI * 2) * r * 0.35), 1, 1);
-      g.globalAlpha = 1;
+    if (!gone(s, 'phone')) {
+      // phone: a sleek base and handset; a holo ring flares when it rings
+      let x = 146;
+      const ringing = s.phone.ringing && s.phone.ringT % 3 < 1.1;
+      if (ringing) x += Math.floor(s.simT * 30) % 2 ? 1 : -1;
+      px(g, '#0e0f14', x, top - 4, 12, 4);
+      px(g, '#2c303b', x + 1, top - 5, 10, 1);
+      px(g, ringing ? C.cyan : '#1e4a52', x + 3, top - 3, 6, 1);
+      if (!s.phone.offHook) {
+        px(g, '#14161c', x - 1, top - 8, 14, 2);
+        px(g, C.cyan, x + 1, top - 8, 10, 1);
+        px(g, '#14161c', x - 1, top - 6, 2, 1);
+        px(g, '#14161c', x + 11, top - 6, 2, 1);
+      }
+      if (ringing) {
+        const r = 6 + (Math.floor(s.simT * 8) % 3) * 2;
+        g.globalAlpha = 0.7;
+        for (let a = 0; a < 16; a++) px(g, C.cyan, Math.round(x + 6 + Math.cos((a / 16) * Math.PI * 2) * r), Math.round(top - 10 + Math.sin((a / 16) * Math.PI * 2) * r * 0.35), 1, 1);
+        g.globalAlpha = 1;
+      }
     }
     // payment terminal
     const tx = 160;

@@ -180,6 +180,7 @@
       n.cargoC = B.pick(['#c9a36a', '#4a7a5a', '#7a5a8a']);
     },
     *run(s, n) {
+      if (n.order && n.order.cargoC) n.cargoC = n.order.cargoC; // a parcel for a replacement (thief.js)
       yield n.walkTo(B.LAYOUT.doorX + (n.dir > 0 ? -2 : 2));
       n.arrived = true;
       B.audio.play('robot-arrived', n.x);
@@ -238,9 +239,17 @@
       // through to the back rooms, to put it all away
       const ord = s.robotOrder;
       s.robotOrder = null;
-      yield* o.backRoom(s, B.rnd(8, 14));
-      o.holding = null;
-      if (ord && B.chance(0.6)) B.log(`${name()} packs away the ${list(ord.items)}.`);
+      if (ord && ord.replace && ord.replace.length && B.restoreStolen) {
+        // replacements for what the thief took go straight back where they belong (thief.js)
+        o.holding = null;
+        yield* B.restoreStolen(s, o, ord.replace);
+        const rest = ord.items.filter((i) => !/^(a new |some replacement)/.test(i));
+        if (rest.length) yield* o.backRoom(s, B.rnd(6, 10));
+      } else {
+        yield* o.backRoom(s, B.rnd(8, 14));
+        o.holding = null;
+        if (ord && B.chance(0.6)) B.log(`${name()} packs away the ${list(ord.items)}.`);
+      }
       o.moodUp(0.04);
     },
   });
