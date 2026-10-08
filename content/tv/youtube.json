@@ -1,8 +1,46 @@
 {
-  "channel": "MS NOW",
-  "channelId": "UCaXkIU1QidjPwiAYu6GcHjg",
-  "match": "^Lawrence:",
-  "id": "FAwMR0ledH4",
-  "title": "Lawrence: There is no bigger story than, is Trump, who has the nuclear codes, ‘losing his mind’?",
-  "published": "2026-10-08T04:28:12+00:00"
+  "shows": [
+    {
+      "key": "lawrence",
+      "name": "MS NOW: The Last Word",
+      "genre": "News, from YouTube",
+      "color": "#d02030",
+      "channelId": "UCaXkIU1QidjPwiAYu6GcHjg",
+      "handle": "@msnow",
+      "match": "^Lawrence:",
+      "query": "Lawrence",
+      "insist": true,
+      "id": "FAwMR0ledH4",
+      "title": "Lawrence: There is no bigger story than, is Trump, who has the nuclear codes, ‘losing his mind’?",
+      "published": "2026-10-08T04:28:12+00:00"
+    },
+    {
+      "key": "nicolle",
+      "name": "MS NOW: Deadline: White House",
+      "genre": "News, from YouTube",
+      "color": "#3a5ad0",
+      "channelId": "UCaXkIU1QidjPwiAYu6GcHjg",
+      "handle": "@msnow",
+      "match": "Nicolle",
+      "query": "Nicolle",
+      "insist": true,
+      "id": "DnGPSwLBZvM",
+      "title": "'DERANGED fantasy': Nicolle SLAMS Trump's DISTURBING comments about Iran destroying American cities",
+      "published": "1d ago"
+    },
+    {
+      "key": "eu5",
+      "name": "Generalist Gaming: EU5",
+      "genre": "Grand strategy, from YouTube",
+      "color": "#c8a040",
+      "channelId": "UC8ep1P0GsTYGkiXaSI59QMw",
+      "handle": "@generalistgaming",
+      "match": "\\bEU5\\b|Europa Universalis",
+      "query": "EU5",
+      "insist": false,
+      "id": "JHDygqXJvAk",
+      "title": "🔴 EU5 1.4 Beta MALI Popping Off w/ DEVELOPMENT and Age 4 Content (Planes GONE Nature HEALING)",
+      "published": "2026-10-08T05:13:31+00:00"
+    }
+  ]
 }
