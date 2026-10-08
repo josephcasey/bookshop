@@ -627,6 +627,15 @@
           rg2.fill();
           rg2.globalCompositeOperation = 'destination-out';
           for (const a of people) B.drawSilhouette(rg2, a, a.x, a.y, 1, 1);
+          // where the eye goes, the glass clears a little: around Mabel while she dances or plays
+          {
+            const o2 = s.owner;
+            if (o2.area === 'inside' && !o2.hidden && B.isDancePose && B.isDancePose(o2.pose)) {
+              rg2.globalAlpha = 0.4;
+              rg2.fillRect(Math.round(o2.x) - 12, Math.round(B.headTop(o2)) - 4, 24, 50);
+              rg2.globalAlpha = 1;
+            }
+          }
           rg2.fillRect(231, 107, 27, 9);
           // a lit telly outshines the reflection on its patch of glass, and in the evening the whole sky image in the flat's
           // windows is kept down so you can follow what Mabel's watching

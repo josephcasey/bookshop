@@ -52,6 +52,12 @@
     }
     tickBase(dt) {
       this.t += dt;
+      // time since the pose last changed (one-shot, keyframed moves start from 0)
+      if (this.pose !== this._lp) {
+        this._lp = this.pose;
+        this.poseT = 0;
+      }
+      this.poseT = (this.poseT || 0) + dt;
       if (this.emoteT > 0) {
         this.emoteT -= dt;
         if (this.emoteT <= 0) this.emoteKind = null;

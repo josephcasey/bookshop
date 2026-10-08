@@ -29,28 +29,28 @@
   });
 
   // ---------- her tune (original) ----------
-  // C | Am | Dm7 | G7 | C | F | G7 | C, a strum on every beat and a little melody over it
+  // I vi ii7 V7 I IV(iv) V7 I on real ukulele shapes (re-entrant GCEA, low to high as strung: G C E A)
   const N = (n) => 440 * Math.pow(2, (n - 69) / 12); // MIDI note -> Hz
-  const CHORDS = [
-    [60, 64, 67, 72], // C
-    [57, 60, 64, 69], // Am
-    [62, 65, 69, 72], // Dm7
-    [55, 59, 62, 65], // G7
-    [60, 64, 67, 72], // C
-    [53, 57, 60, 65], // F
-    [55, 59, 62, 65], // G7
-    [60, 64, 67, 72], // C
-  ];
-  // melody: [beat within the 32, MIDI note, length in beats]
+  const C = [67, 60, 64, 72]; // 0003
+  const A7 = [67, 61, 64, 69]; // 0100
+  const Dm7 = [69, 62, 65, 72]; // 2213
+  const G7 = [67, 62, 65, 71]; // 0212
+  const F = [69, 60, 65, 69]; // 2010
+  const Fm = [68, 60, 65, 72]; // 1013
+  // a chord per half-bar (two beats each)
+  const HARMONY = [C, C, A7, A7, Dm7, Dm7, G7, G7, C, C, F, Fm, G7, G7, C, C];
+  // the island strum, per bar: down, down, up, up, down, up (the off-beats swung)
+  const STRUM = [[0, 'D'], [1, 'D'], [1.6, 'U'], [2.6, 'U'], [3, 'D'], [3.6, 'U']];
+  // an original melody: [beat, MIDI note, beats]; bar 5 answers bar 1
   const MELODY = [
-    [0, 76, 1], [1, 79, 1], [2, 81, 1], [3, 79, 1],
-    [4, 72, 1.5], [5.5, 74, 0.5], [6, 76, 2],
-    [8, 77, 1], [9, 81, 1], [10, 79, 1], [11, 77, 1],
-    [12, 74, 2], [14, 71, 1], [15, 74, 1],
-    [16, 76, 1], [17, 72, 1], [18, 79, 2],
-    [20, 81, 1], [21, 79, 1], [22, 77, 1], [23, 76, 1],
-    [24, 74, 1], [25, 76, 1], [26, 77, 1], [27, 79, 1],
-    [28, 84, 2], [30, 79, 1], [31, 72, 1],
+    [0, 76, 1], [1, 79, 0.5], [1.5, 81, 1], [2.5, 79, 1.5],
+    [4, 76, 1], [5, 72, 1], [6, 69, 2],
+    [8, 77, 1], [9, 81, 0.5], [9.5, 79, 1], [10.5, 77, 1.5],
+    [12, 74, 1], [13, 71, 1], [14, 67, 1], [15, 71, 1],
+    [16, 76, 1], [17, 79, 0.5], [17.5, 81, 1], [18.5, 79, 1.5],
+    [20, 81, 1], [21, 77, 1], [22, 80, 1.5], [23.5, 77, 0.5],
+    [24, 74, 1], [25, 77, 1], [26, 76, 0.5], [26.5, 74, 1.5],
+    [28, 72, 3], [31, 79, 1],
   ];
   const BEAT = 0.52;
   B.audio.define('uke-tune', ({ tone, shop }, reps = 2) => {
@@ -60,14 +60,23 @@
     };
     for (let r = 0; r < reps; r++) {
       const t0 = r * 32 * BEAT;
-      CHORDS.forEach((ch, bar) => {
-        for (let b = 0; b < 4; b++) {
-          const at = t0 + (bar * 4 + b) * BEAT;
-          const down = b % 2 === 0;
-          (down ? ch : ch.slice().reverse()).forEach((n, i) => pluck(N(n), at + i * 0.012, down ? 0.012 : 0.008, 0.35));
+      const last = r === reps - 1;
+      for (let bar = 0; bar < 8; bar++) {
+        for (const [b, dir] of STRUM) {
+          const beat = bar * 4 + b;
+          if (last && beat >= 28) continue; // the last bar: one held chord instead
+          const ch = HARMONY[Math.floor(beat / 2)];
+          const at = t0 + beat * BEAT;
+          if (dir === 'D') ch.forEach((n, i) => pluck(N(n), at + i * 0.012, 0.011, 0.38)); // down: all four, G to A
+          else ch.slice(1).reverse().forEach((n, i) => pluck(N(n), at + i * 0.01, 0.006, 0.25)); // up: the top three, lighter
         }
-      });
-      for (const [b, n, len] of MELODY) pluck(N(n), t0 + b * BEAT, 0.02, len * BEAT * 0.9);
+      }
+      for (const [b, n, len] of MELODY) {
+        if (last && b === 28) pluck(N(n), t0 + b * BEAT, 0.02, 4 * BEAT * 0.9); // the final note held a full bar
+        else if (last && b === 31) continue;
+        else pluck(N(n), t0 + b * BEAT, 0.02, len * BEAT * 0.9);
+      }
+      if (last) C.forEach((n, i) => pluck(N(n), t0 + 28 * BEAT + i * 0.02, 0.013, 2 * BEAT * 1.6)); // ends on a held C
     }
   });
   const TUNE_SECONDS = 32 * BEAT;
@@ -132,33 +141,35 @@
     cooldown: 25,
     when: (s, o) => free(s, o) && station(s) === 'swissclassic',
     *run(s, o) {
-      // the counter top makes a good barre
+      // class order, phrased in eights (~72 bpm: an 8-count is about 6.7 s): plies at the barre first
       yield o.go(140);
       o.face(1);
       B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
       yield o.hold('stretch', 1.5);
-      yield o.hold('barre', 4);
-      yield o.hold('portdebras', 3);
-      yield o.hold('barre', 3);
-      // then out on the floor
-      yield o.go(88); // in front of the dark arch, where she stands out
+      yield o.hold('barreplie', 6.6);
+      yield o.hold('barrepdb', 6);
+      yield o.hold('barre', 4); // a leg along the barre, leaning over it
+      // then the centre, in front of the dark arch
+      yield o.go(88);
       o.face(0);
-      yield o.hold('plie', 5);
-      yield o.hold('portdebras', 4);
+      yield o.hold('plie', 6);
+      if (B.chance(0.35)) yield o.hold('grandplie', 6);
+      yield o.hold('portdebras', 6);
       o.face(1);
       yield o.hold('arabesque', 3);
-      // a pirouette: round she goes
-      for (let i = 0; i < 8; i++) {
+      // a pirouette: prepare, one spotted turn (the face longest, the back a blink), finish
+      o.face(0);
+      yield o.hold('pirprep', 0.8);
+      for (const [d, back, dur] of [[0, false, 0.18], [1, false, 0.1], [0, true, 0.08], [-1, false, 0.1], [0, false, 0.18]]) {
         o.pose = 'pirouette';
-        const k = i % 4;
-        o.backView = k === 2;
-        o.dir = k === 1 ? 1 : k === 3 ? -1 : 0;
-        yield 0.13;
+        o.dir = d;
+        o.backView = back;
+        yield dur;
       }
       o.backView = false;
       o.face(0);
-      yield o.hold('portdebras', 2);
-      yield o.hold('reverence', 2); // a bow, to nobody in particular
+      yield o.hold('pirland', 0.5);
+      yield o.hold('reverence', 3.3); // a bow, to nobody in particular
       if (B.chance(0.5)) o.emote('heart', 1.4);
       o.pose = 'stand';
     },
