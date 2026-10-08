@@ -315,25 +315,28 @@
     // ---------- ballet (positions from the dance consultant; timing and easing from the animation consultant) ----------
     // arm positions, front arm (the back arm mirrors x): bras bas, first, fifth (framing the head), second
     // at the barre: the barre hand resting on the counter top, the outside arm in second
-barreplie: keyed(
-      // facing the barre, both hands on it: the elbows bend out as she sinks, the hands stay on the counter top
+    barreplie: keyed(
+      // facing the barre, hands shoulder-width on it: the elbows bend out as she sinks, the hands stay put;
+      // the head drops a pixel at the bottom and lifts on the rise (the breath)
       [
-        { t: 0, f: [[5, 6], [7, 11]], b: [[-5, 6], [-7, 11]], bob: 0, headDy: -1 },
-        { t: 1.5, f: [[6, 3], [7, 8]], b: [[-6, 3], [-7, 8]], bob: 4 },
-        { t: 1.8, f: [[6, 3], [7, 8]], b: [[-6, 3], [-7, 8]], bob: 4 },
-        { t: 3.0, f: [[5, 6], [7, 11]], b: [[-5, 6], [-7, 11]], bob: 0, headDy: -1 },
+        { t: 0, f: [[4, 6], [0, 11]], b: [[-4, 6], [0, 11]], bob: 0 },
+        { t: 1.5, f: [[6, 3], [0, 8]], b: [[-6, 3], [0, 8]], bob: 4, headDy: 1 },
+        { t: 1.8, f: [[6, 3], [0, 8]], b: [[-6, 3], [0, 8]], bob: 4, headDy: 1 },
+        { t: 3.0, f: [[4, 6], [0, 11]], b: [[-4, 6], [0, 11]], bob: 0, headDy: -1 },
+        { t: 3.3, f: [[4, 6], [0, 11]], b: [[-4, 6], [0, 11]], bob: 0 },
       ],
       3.3,
     ),
+    barreturn: keyed([{ t: 0, f: [[4, 6], [9, 11]], b: [[1, 8], [1, 13]], bob: 0 }], 0.4, { once: true }), // lets go, turns, takes the barre
     // ...the outside arm travelling bras bas, first, fifth, second
-barrepdb: keyed(
+    barrepdb: keyed(
       // side-on at the barre: the outside arm through bras bas, first (in front of the stomach), fifth, and second
       // (seen from the side, second is forward and out)
       [
         { t: 0, f: [[4, 6], [9, 11]], b: [[-1, 8], [2, 13]], hold: true },
         { t: 0.9, f: [[4, 6], [9, 11]], b: [[-1, 8], [2, 13]] },
-        { t: 1.5, f: [[4, 6], [9, 11]], b: [[2, 6], [3, 9]], hold: true },
-        { t: 2.4, f: [[4, 6], [9, 11]], b: [[2, 6], [3, 9]] },
+        { t: 1.5, f: [[4, 6], [9, 11]], b: [[2, 6], [3, 9]], headDy: -1, hold: true },
+        { t: 2.4, f: [[4, 6], [9, 11]], b: [[2, 6], [3, 9]], headDy: -1 },
         { t: 3.0, f: [[4, 6], [9, 11]], b: [[-4, -9], [1, -14]], headDy: -1, hold: true },
         { t: 3.9, f: [[4, 6], [9, 11]], b: [[-4, -9], [1, -14]], headDy: -1, ease: 'out' },
         { t: 4.5, f: [[4, 6], [9, 11]], b: [[1, 1], [5, 3]], headDx: 1, hold: true },
@@ -342,7 +345,7 @@ barrepdb: keyed(
       6,
     ),
     // a leg along the barre, the outside arm en haut, leaning over the leg
-barre: keyed(
+    barre: keyed(
       // the leg along the barre, the arm en haut; a deep stretch over the leg, held; and back up
       [
         { t: 0, f: [[4, 6], [9, 11]], b: [[-3, -6], [-1, -12]], hold: true },
@@ -355,40 +358,37 @@ barre: keyed(
       { once: true, base: { legs: LEGS.barre } },
     ),
     // centre: plie, down on two counts and up on two, arms in second (a grand plie is deeper)
-plie: keyed(
-      // one plie with its port de bras (the legs are hidden, so the arms say it): second, low second, bras bas at the
-      // bottom, first on the way up, second
+    plie: keyed(
+      // demi-plie: the arms hold second, breathing down with the knees
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 1.4, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 2 },
-        { t: 2.6, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 4 },
-        { t: 3.0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 4 },
-        { t: 4.4, f: [[4, 6], [-2, 9]], b: [[-4, 6], [2, 9]], bob: 2 },
-        { t: 6.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
+        { t: 1.6, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1, hold: true },
+        { t: 2.0, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 3, headDy: 1 },
+        { t: 4.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
-      6.0,
+      4.0,
       { base: { legs: LEGS.plie } },
     ),
-grandplie: keyed(
+    grandplie: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
         { t: 1.4, f: [[6, 3], [10, 6]], b: [[-6, 3], [-10, 6]], bob: 2 },
         { t: 2.6, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
         { t: 3.0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], bob: 5 },
-        { t: 4.4, f: [[4, 6], [-2, 9]], b: [[-4, 6], [2, 9]], bob: 2 },
+        { t: 4.4, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, bob: 2 },
         { t: 6.0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
       ],
       6.0,
       { once: true, base: { legs: LEGS.plie } },
     ),
     // port de bras: bras bas, first, fifth (the head lifting after the hands), second; 1.5 s a position
-portdebras: keyed(
+    portdebras: keyed(
       // bras bas, first, fifth (a little cambre: the head lifting after the hands), second with epaulement
       [
         { t: 0, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]], hold: true },
         { t: 0.9, f: [[1, 8], [-2, 13]], b: [[-1, 8], [2, 13]] },
-        { t: 1.5, f: [[4, 6], [-2, 9]], b: [[-4, 6], [2, 9]], hold: true },
-        { t: 2.4, f: [[4, 6], [-2, 9]], b: [[-4, 6], [2, 9]] },
+        { t: 1.5, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, hold: true },
+        { t: 2.4, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1 },
         { t: 3.0, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1 },
         { t: 3.2, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -2, hold: true },
         { t: 3.4, f: [[4, -9], [-1, -14]], b: [[-4, -9], [1, -14]], headDy: -1, hold: true },
@@ -402,7 +402,7 @@ portdebras: keyed(
     arabesque: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.3, f: [[4, 6], [-2, 9]], b: [[-4, 6], [2, 9]], bob: 0, legs: LEGS.retire }, // developpe: through retire
+        { t: 0.3, f: [[5, 8], [-2.5, 12]], b: [[-5, 8], [2.5, 12]], headDy: 1, bob: 0, legs: LEGS.retire }, // developpe: through retire
         { t: 0.6, f: [[6, -2], [12, -4]], b: [[-6, 0], [-11, 3]], bob: 0, ease: 'out', headDx: 1, legs: LEGS.arabesque },
         { t: 1.8, f: [[6, -2], [12, -5]], b: [[-6, 0], [-11, 3]], bob: 0, headDx: 1, legs: LEGS.arabesque },
         { t: 3.0, f: [[6, -2], [12, -4]], b: [[-6, 0], [-11, 3]], bob: 0, headDx: 1, legs: LEGS.arabesque },
@@ -416,8 +416,8 @@ portdebras: keyed(
     pirprep: keyed(
       [
         { t: 0, f: [[6, 1], [11, 3]], b: [[-6, 1], [-11, 3]], bob: 0 },
-        { t: 0.6, f: [[4, 6], [-2, 9]], b: [[-6, 1], [-11, 3]], bob: 2 },
-        { t: 0.8, f: [[4, 6], [-2, 9]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.6, f: [[5, 8], [-2.5, 12]], b: [[-6, 1], [-11, 3]], bob: 2 },
+        { t: 0.8, f: [[5, 8], [-2.5, 12]], b: [[-6, 1], [-11, 3]], bob: 2 },
       ],
       0.8,
       { once: true },
@@ -454,8 +454,9 @@ portdebras: keyed(
       if (t % 4 < 0.5) {
         const sh = osc(t, 8);
         if (Math.floor(t / 4) % 2 === 0) return { f: [[5, -1], [6 + sh, -7]], b: [[-5, -1], [-6 - sh, -7]], item: 'jazz', bob: 0, legs: LEGS.plie };
-        // the crossed-knee swap: hands on the knees, the body swivelling
-        return { f: [[4, 7], [1, 13]], b: [[-4, 7], [-1, 13]], bob: 1, bodyDx: osc(t, 4) ? 1 : -1, legs: LEGS.plie };
+        // the flapper shimmy: a wide low V, palms open, the shoulders alternating
+        const s = osc(t, 8) ? 1 : -1;
+        return { f: [[6, 4 + s], [11, 9 + s]], b: [[-6, 4 - s], [-11, 9 - s]], item: 'jazz', bob: 0, legs: LEGS.plie };
       }
       const u = ((t % 0.44) + 0.44) % 0.44; // kick 0.14, down 0.08, kick 0.14, down 0.08
       const ph = u < 0.14 ? 0 : u < 0.22 ? 1 : u < 0.36 ? 2 : 3;
@@ -502,7 +503,7 @@ portdebras: keyed(
   const BACK_POSES = { browse: 1, shelve: 1, backstand: 1, backwave: 1, dust: 1 };
   const SIT_POSES = { sit: 1, sitread: 1, situke: 1 };
   B.isDancePose = (p) => !!DANCE_POSES[p];
-  const DANCE_POSES = { barreplie: 1, barrepdb: 1, barre: 1, plie: 1, grandplie: 1, portdebras: 1, arabesque: 1, pirprep: 1, pirouette: 1, pirland: 1, reverence: 1, charleston: 1, ukulele: 1, situke: 1 };
+  const DANCE_POSES = { barreplie: 1, barreturn: 1, barrepdb: 1, barre: 1, plie: 1, grandplie: 1, portdebras: 1, arabesque: 1, pirprep: 1, pirouette: 1, pirland: 1, reverence: 1, charleston: 1, ukulele: 1, situke: 1 };
   const stretch = (arm) => arm.map(([x, y]) => [Math.round(x * AR), Math.round(y * AR)]);
 
   function metrics(a) {

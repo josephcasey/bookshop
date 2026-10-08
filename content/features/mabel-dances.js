@@ -159,19 +159,20 @@
     when: (s, o) => free(s, o) && station(s) === 'swissclassic',
     *run(s, o) {
       // class order, phrased in eights (~72 bpm: an 8-count is about 6.7 s): plies at the barre first
-      yield o.go(176); // the counter's clearest stretch, plain plaster behind
+      yield o.go(182); // the counter's clearest stretch (between the till and the boxes), plain plaster behind
       o.face(1);
       B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
       yield o.hold('stretch', 1.5);
       o.face(0); // plies facing the barre, both hands on it
       yield o.hold('barreplie', 6.6);
-      o.face(1); // then side-on, one hand on the barre
+      o.face(1); // then side-on: lets go, turns, takes the barre again
+      yield o.hold('barreturn', 0.4);
       yield o.hold('barrepdb', 6);
       yield o.hold('barre', 4.6); // a leg along the barre, leaning over it
       // then the centre, in front of the dark arch
       yield o.go(88);
       o.face(0);
-      yield o.hold('plie', 6);
+      yield o.hold('plie', 8); // two demi-plies
       if (B.chance(0.35)) yield o.hold('grandplie', 6);
       yield o.hold('portdebras', 6);
       o.face(1);

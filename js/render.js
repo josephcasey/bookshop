@@ -839,7 +839,8 @@
       B.text(g, '£', tx + 6, ty - 6, '#8c2f2f');
       px(g, '#6a5a3a', tx - 2, top - 1, 18, 2);
     }
-    if (s.counter.cup) {
+    const atBarre = s.owner.area === 'inside' && /^barre/.test(s.owner.pose || ''); // she's moved her cup off the barre
+    if (s.counter.cup && !atBarre) {
       px(g, '#f3efe6', 178, top - 4, 4, 4);
       px(g, '#f3efe6', 182, top - 3, 1, 2);
     }
