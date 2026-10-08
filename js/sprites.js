@@ -306,6 +306,7 @@
     }
     const fx = UKE_CHORD_X[Math.floor(beat / 2) % 16];
     const spec = { f: [[2, 7], [0, y]], b: [[-3, 4], [-fx, 0]], item: 'uke' };
+    spec.streak = UKE_HAND.some(([a0, a1, y0, y1]) => y1 > y0 && b4 >= a0 && b4 < a0 + (a1 - a0) * 0.5); // early in a down-stroke
     if (standing) spec.bob = (b4 < 0.25 || (b4 >= 2 && b4 < 2.25)) ? 1 : 0; // a nod on 1 and 3
     spec.headDx = Math.round(Math.sin((beat / 4) * Math.PI)); // a gentle sway, every two beats
     return spec;
@@ -811,7 +812,25 @@
     if (!back) drawFace(g, a, L, hx, hy, d, fd, P, face);
     const hair = HAIR[L.hairStyle] || HAIR.short;
     const which = back ? 'back' : d === 0 ? 'front' : 'side';
-    spans(g, hair[which], hx, hy, d === 0 || back ? 1 : fd, L.hair, L.hair, hair.texture);
+    let bunDx = 0;
+    let bunDy = 0;
+    if (L.hairStyle === 'bun' && !a.moving) {
+      // the bun's follow-through: when the head moves, the bun trails it by a pixel for 0.12 s
+      if (!a._hp || a._hp[0] !== hx || a._hp[1] !== hy) {
+        a._hpPrev = a._hp || [hx, hy];
+        a._hp = [hx, hy];
+        a._hpT = t;
+      }
+      if (t >= a._hpT && t - a._hpT < 0.12) {
+        bunDx = Math.max(-1, Math.min(1, a._hpPrev[0] - hx));
+        bunDy = Math.max(-1, Math.min(1, a._hpPrev[1] - hy));
+      }
+    }
+    if (bunDx || bunDy) {
+      const mir = d === 0 || back ? 1 : fd;
+      spans(g, hair[which].filter((r) => r[0] >= 0), hx, hy, mir, L.hair, L.hair, hair.texture);
+      spans(g, hair[which].filter((r) => r[0] < 0), hx + bunDx, hy + bunDy, mir, L.hair, L.hair, hair.texture);
+    } else spans(g, hair[which], hx, hy, d === 0 || back ? 1 : fd, L.hair, L.hair, hair.texture);
     if (L.hairStyle === 'bald' && !L.hat) P(lit(skin, 2), hx + 2, hy + 1, 2, 1);
     if (L.hat) {
       const hat = HATS[L.hatStyle] || HATS.flat;
@@ -927,6 +946,7 @@
           B.line(g, ux + (fd > 0 ? 0 : 6), uy + 1, bh[0], bh[1] - 1, '#7a4a20'); // the neck
           P('#e8dcc0', Math.round((ux + (fd > 0 ? 0 : 6) + bh[0]) / 2), Math.round((uy + 1 + bh[1] - 1) / 2), 1, 1); // a fret dot
           P('#e8dcc0', bh[0] - 1, bh[1] - 2, 2, 1); // the headstock
+          if (spec.streak) P(B.theme === 'cyber' ? '#9ff8ff' : '#f0d8b8', fh[0], fh[1] - 3, 1, 2); // the strum's motion trail
           break;
         }
         case 'jazz':
