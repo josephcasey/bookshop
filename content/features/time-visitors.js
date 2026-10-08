@@ -95,7 +95,7 @@
     *run(s, n) {
       // along the shopfront: the pilaster by the door, the window frame, the far pilaster
       const fromRight = n.dir < 0;
-      const outside = fromRight ? [222, 170, 70, 5] : [5, 70, 170, 222];
+      const outside = fromRight ? [222, 170, 70, 16] : [16, 70, 170, 222]; // (16: the left pilaster, clear of the edge)
       for (const x of outside) {
         n.phase = 'outside';
         yield n.walkTo(x);
@@ -177,12 +177,16 @@
     *run(s, n) {
       const lead = n.lead;
       const alive = () => lead && s.npcs.includes(lead) && lead.phase !== 'gone';
-      const behind = () => lead.x - (lead.dir || 1) * 12;
+      // a step behind him, or a step ahead when behind would put her off the end of the shopfront
+      const behind = () => {
+        const x = lead.x - (lead.dir || 1) * 14;
+        return x < 8 || x > 236 ? lead.x + (lead.dir || 1) * 14 : x;
+      };
       let rapped = false;
       // keep a step behind him along the shopfront, rapping on the bricks
       while (alive() && lead.phase === 'arrive') yield 0.2;
       while (alive() && lead.phase === 'outside') {
-        if (Math.abs(n.x - behind()) > 6) yield n.walkTo(B.clamp(behind(), -10, 236));
+        if (Math.abs(n.x - behind()) > 6) yield n.walkTo(B.clamp(behind(), 8, 236));
         else if (!lead.moving && B.chance(0.25)) {
           n.face('away');
           yield n.hold('reach', 0.4);
