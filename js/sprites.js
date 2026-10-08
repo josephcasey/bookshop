@@ -509,6 +509,7 @@
     cross: () => ({ f: [[1, 8], [-7, 9]], b: [[1, 8], [6, 10]] }),
     clap: (t) => ({ f: [[2, 8], [-3 + osc(t, 6), 5]], b: [[-2, 8], [3 - osc(t, 6), 5]] }),
     point: () => ({ f: [[5, -1], [12, -3]] }),
+    shake: (t) => ({ f: [[3, -6], [4 + osc(t, 8), -13]] }), // a gadget held up and given a shake
     hug: () => ({ f: [[1, 9], [-4, 6]], b: [[-1, 9], [4, 6]], item: 'bookHug' }),
     crouch: () => ({ f: [[2, 8], [6, 14]], b: [[1, 8], [4, 14]] }),
     carry: () => ({ f: [[1, 8], [5, 10]], b: [[1, 8], [3, 10]] }),
@@ -676,6 +677,11 @@
     }
     if (h === 'box') items.push('box');
     if (h === 'books') items.push('stack');
+    if (h === 'gadget') {
+      // a buzzing pocket gadget (SCH-22): pointed out at arm's length, held up to be read, or just carried
+      if (pose !== 'point' && pose !== 'reach' && pose !== 'shake') fA = [[1, 8], [4, 11]];
+      items.push('gadget');
+    }
     if (h === 'broom' && pose !== 'sweep') {
       fA = [[1, 8], [3, 13]];
       items.push('broomUp');
@@ -808,6 +814,15 @@
       band(L.scarf, cx - 4, 8, sy - 2, 3, false);
       P(L.scarf, back ? cx - 1 : fd > 0 ? cx + 1 : cx - 2, sy + 1, 2, 6);
       P(lit(L.scarf, -1), back ? cx - 1 : fd > 0 ? cx + 1 : cx - 2, sy + 6, 2, 1);
+    }
+
+    if (L.bowtie && !back) {
+      // a bow tie at the collar (front: two wings and a knot; in profile, a wing past the collar)
+      if (d === 0) {
+        P(L.bowtie, cx - 2, sy - 1, 1, 2);
+        P(lit(L.bowtie, -1), cx - 1, sy - 1, 2, 1);
+        P(L.bowtie, cx + 1, sy - 1, 1, 2);
+      } else P(L.bowtie, fd > 0 ? cx + 1 : cx - 2, sy - 1, 2, 2);
     }
 
     // ----- neck & head -----
@@ -999,6 +1014,21 @@
             }
           }
           break;
+        case 'gadget': {
+          // a slim silver rod with a glowing tip: out along the pointing arm, upright when held up to read
+          const up = pose === 'reach' || pose === 'shake';
+          const glow = B.theme === 'cyber' ? '#3ff5ff' : '#7dff6a';
+          const tx = up ? fh[0] : fh[0] + 4 * fd;
+          const ty = up ? fh[1] - 5 : fh[1] - 1;
+          if (up) P('#9aa0a8', fh[0], fh[1] - 4, 1, 4);
+          else P('#9aa0a8', fd > 0 ? fh[0] + 1 : fh[0] - 3, fh[1] - 1, 3, 1);
+          P(lit('#9aa0a8', -2), fh[0], fh[1], 1, 1); // the grip
+          if (a.gadgetOn && (Math.floor(t * 14) + Math.floor(t * 5)) % 3) {
+            P(glow, tx, ty, 1, 1); // the tip, flickering as it sweeps
+            P(B.theme === 'cyber' ? 'rgba(63,245,255,0.35)' : 'rgba(125,255,106,0.35)', tx - 1, ty - 1, 3, 3);
+          } else P(lit(glow, -3), tx, ty, 1, 1);
+          break;
+        }
         case 'duster':
           P('#e87fa0', fh[0] - 2, fh[1] - 5, 4, 4);
           P('#f4a6bf', fh[0] - 1, fh[1] - 5, 2, 2);
