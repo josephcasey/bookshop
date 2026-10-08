@@ -311,7 +311,7 @@
       const next = UKE_HAND[i + 1];
       if (b4 >= a1 && (!next || b4 < next[0])) y = y1;
     }
-    const fx = UKE_CHORD_X[Math.floor(beat / 2) % 16];
+    const fx = (B.ukeChordX || UKE_CHORD_X)[Math.floor(beat / 2) % 16]; // (the tune playing sets B.ukeChordX)
     const spec = { f: [[2, 7], [0, y]], b: [[-3, 4], [-fx, 0]], item: 'uke' };
     spec.streak = UKE_HAND.some(([a0, a1, y0, y1]) => y1 > y0 && b4 >= a0 && b4 < a0 + (a1 - a0) * 0.5); // early in a down-stroke
     if (standing) spec.bob = (b4 < 0.25 || (b4 >= 2 && b4 < 2.25)) ? 1 : 0; // a nod on 1 and 3

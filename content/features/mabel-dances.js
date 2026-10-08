@@ -80,7 +80,30 @@
     [28, 72, 3], [31, 79, 1],
   ];
   const BEAT = 0.52;
-  B.audio.define('uke-tune', ({ tone, shop }, reps = 2) => {
+  // her other number: "St. James Infirmary", the old traditional blues (a descendant of "The Unfortunate Rake";
+  // Louis Armstrong's 1928 record made it famous). Her own simple take on the tune in D minor, swung on the uke.
+  const Dm = [69, 62, 65, 69]; // 2210
+  const Gm = [67, 62, 67, 70]; // 0231
+  const STJ = {
+    harmony: [Dm, Dm, Dm, A7, Dm, Dm, Dm, Dm, Gm, Gm, Dm, Dm, A7, A7, Dm, Dm],
+    chordX: [9, 9, 9, 7, 9, 9, 9, 9, 8, 8, 9, 9, 7, 7, 9, 9], // where her fretting hand sits for each half-bar
+    melody: [
+      [0, 62, 1], [1, 62, 0.5], [1.6, 62, 0.4], [2, 61, 0.5], [2.6, 62, 1.4],
+      [4, 65, 1], [5, 64, 0.5], [5.6, 62, 0.9], [6.5, 61, 1.5],
+      [8, 57, 0.5], [8.6, 62, 0.4], [9, 62, 1], [10, 65, 1], [11, 64, 1],
+      [12, 62, 3], [15, 69, 1],
+      [16, 70, 1], [17, 69, 0.5], [17.6, 67, 0.4], [18, 65, 1], [19, 67, 1],
+      [20, 65, 1], [21, 62, 1], [22, 65, 1], [23, 64, 1],
+      [24, 64, 1], [25, 62, 0.5], [25.6, 61, 0.4], [26, 62, 1], [27, 57, 1],
+      [28, 62, 3], [31, 57, 1],
+    ],
+    end: Dm,
+    title: '"St. James Infirmary"',
+  };
+  const BUDDY = { harmony: HARMONY, chordX: null, melody: MELODY, end: C, title: 'a little tune of her own' };
+  const TUNES = { buddy: BUDDY, stjames: STJ };
+  B.audio.define('uke-tune', ({ tone, shop }, reps = 2, which = 'buddy') => {
+    const T = TUNES[which] || BUDDY;
     const pluck = (f, at, vol, dur = 0.5) => {
       tone(f, dur, { type: 'triangle', vol, at, a: 0.004, lp: 3200, bus: shop });
       tone(f * 2, dur * 0.4, { type: 'sine', vol: vol * 0.3, at, a: 0.002, lp: 4000, bus: shop }); // the bright nylon edge
@@ -92,20 +115,27 @@
         for (const [b, dir] of STRUM) {
           const beat = bar * 4 + b;
           if (last && beat >= 28) continue; // the last bar: one held chord instead
-          const ch = HARMONY[Math.floor(beat / 2)];
+          const ch = T.harmony[Math.floor(beat / 2)];
           const at = t0 + beat * BEAT;
           if (dir === 'D') ch.forEach((n, i) => pluck(N(n), at + i * 0.012, 0.011, 0.38)); // down: all four, G to A
           else ch.slice(1).reverse().forEach((n, i) => pluck(N(n), at + i * 0.01, 0.006, 0.25)); // up: the top three, lighter
         }
       }
-      for (const [b, n, len] of MELODY) {
+      for (const [b, n, len] of T.melody) {
         if (last && b === 28) pluck(N(n), t0 + b * BEAT, 0.02, 4 * BEAT * 0.9); // the final note held a full bar
         else if (last && b === 31) continue;
         else pluck(N(n), t0 + b * BEAT, 0.02, len * BEAT * 0.9);
       }
-      if (last) C.forEach((n, i) => pluck(N(n), t0 + 28 * BEAT + i * 0.02, 0.013, 2 * BEAT * 1.6)); // ends on a held C
+      if (last) T.end.forEach((n, i) => pluck(N(n), t0 + 28 * BEAT + i * 0.02, 0.013, 2 * BEAT * 1.6)); // ends on a held chord
     }
   });
+  /** Pick a tune and start it: tells the sprites where her chord hand goes (js/sprites.js ukeSpec). */
+  const startTune = (reps) => {
+    const which = B.chance(0.5) ? 'stjames' : 'buddy';
+    B.ukeChordX = TUNES[which].chordX;
+    B.audio.play('uke-tune', reps, which);
+    return TUNES[which];
+  };
   const TUNE_SECONDS = 32 * BEAT;
 
   const notes = (s, o) => {
@@ -123,9 +153,9 @@
       yield o.hold('reach', 0.8); // lifts it off the hook
       o.face(0);
       o.pose = 'ukulele';
-      B.log(B.pick([`${name()} takes her ukulele down and plays a little tune.`, `${name()} strums her ukulele, humming along.`, `A ukulele interlude from ${name()}.`]));
       const reps = B.chance(0.5) ? 2 : 1;
-      B.audio.play('uke-tune', reps);
+      const tune = startTune(reps);
+      B.log(B.pick([`${name()} takes her ukulele down and plays ${tune.title}.`, `${name()} strums ${tune.title} on her ukulele, humming along.`]));
       let t = 0;
       while (t < TUNE_SECONDS * reps) {
         yield 1;
@@ -148,8 +178,8 @@
       yield o.go(B.LAYOUT.upstairsSpots.chair);
       o.face(1);
       o.pose = 'situke';
-      B.log(`${name()} plays her ukulele in the armchair.`);
-      B.audio.play('uke-tune', 2);
+      const tune = startTune(2);
+      B.log(`${name()} plays ${tune.title} on her ukulele in the armchair.`);
       let t = 0;
       while (t < TUNE_SECONDS * 2) {
         yield 1;
