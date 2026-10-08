@@ -38,9 +38,10 @@
       const y = B.LAYOUT.counterTop - 4;
       const x0 = fd > 0 ? Math.round(o.x) + 1 : Math.round(o.x) - 13;
       const cy = B.theme === 'cyber';
-      B.px(g, cy ? '#5a5070' : '#8a7068', x0, y, 12, 2); // the stocking, lit along the top
-      B.px(g, cy ? '#2a2438' : '#4a3a3a', x0, y + 2, 12, 1); // its shadowed underside
-      B.px(g, cy ? '#3ff5ff' : '#3a2418', fd > 0 ? x0 + 12 : x0 - 2, y, 2, 2); // a pointed foot
+      const x1 = fd > 0 ? x0 : x0 - 3;
+      B.px(g, cy ? '#6a6084' : '#9a8078', x1, y, 15, 2); // the stocking, lit along the top
+      B.px(g, cy ? '#2a2438' : '#4a3a3a', x1, y + 2, 15, 1); // its shadowed underside
+      B.px(g, cy ? '#ff7ad9' : '#e8b0a0', fd > 0 ? x1 + 15 : x1 - 2, y, 2, 2); // a pointed foot, in a pink slipper
     },
   });
 
@@ -162,9 +163,11 @@
       o.face(1);
       B.log(B.pick([`${name()} takes the counter as a barre: a dancer never forgets.`, `Radio Swiss Classic: ${name()} warms up at the counter like it's a barre.`]));
       yield o.hold('stretch', 1.5);
+      o.face(0); // plies facing the barre, both hands on it
       yield o.hold('barreplie', 6.6);
+      o.face(1); // then side-on, one hand on the barre
       yield o.hold('barrepdb', 6);
-      yield o.hold('barre', 4); // a leg along the barre, leaning over it
+      yield o.hold('barre', 4.6); // a leg along the barre, leaning over it
       // then the centre, in front of the dark arch
       yield o.go(88);
       o.face(0);

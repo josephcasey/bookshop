@@ -490,15 +490,15 @@ export async function dance(tag = 'dance', themes = ['classic']) {
     const SPIN = [0, 1, 0, -1, 0, 1, 0, -1];
     const SEQ = (pose, x, dir, times) => times.map((tt) => [pose, dir, false, tt, x]);
     const ROWS = [
-      ['barre plies', SEQ('barreplie', 176, 1, [0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8])],
+      ['barre plies', SEQ('barreplie', 176, 0, [0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8])],
       ['barre port de bras', SEQ('barrepdb', 176, 1, [0, 0.8, 1.5, 2.3, 3.0, 3.8, 4.5, 5.3])],
-      ['leg on the barre', SEQ('barre', 176, 1, [0, 0.5, 1, 1.5, 2.2, 2.8, 3.3, 3.9])],
-      ['plie', SEQ('plie', 88, 0, [0, 0.4, 0.8, 1.2, 1.5, 1.9, 2.4, 2.8])],
+      ['leg on the barre', SEQ('barre', 176, 1, [0, 1.0, 1.5, 2.0, 2.8, 3.6, 4.0, 4.5])],
+      ['plie', SEQ('plie', 88, 0, [0, 0.8, 1.4, 2.0, 2.8, 3.7, 4.4, 5.3])],
       ['port de bras', SEQ('portdebras', 88, 0, [0, 0.9, 1.5, 2.4, 3.0, 3.9, 4.5, 5.4])],
       ['arabesque', SEQ('arabesque', 88, 1, [0, 0.2, 0.4, 0.7, 1.5, 2.4, 3.05, 3.3])],
       ['pirouette: prep, turn, land', [['pirprep', 0, false, 0.2, 88], ['pirprep', 0, false, 0.7, 88], ['pirouette', 0, false, 0, 88], ['pirouette', 1, false, 0, 88], ['pirouette', 0, true, 0, 88], ['pirouette', -1, false, 0, 88], ['pirland', 0, false, 0.3, 88], ['pirland', 0, false, 0.7, 88]]],
       ['reverence', SEQ('reverence', 88, 0, [0.6, 1.0, 1.5, 2.1, 2.4, 2.55, 2.9, 3.3])],
-      ['charleston', SEQ('charleston', 88, 0, [0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 4.1, 4.3])],
+      ['charleston', SEQ('charleston', 88, 0, [0.5, 0.625, 0.75, 0.875, 4.1, 4.3, 8.1, 8.3])],
       ['ukulele (one bar)', SEQ('ukulele', 107, 0, [0, 0.1, 0.55, 0.86, 1.2, 1.4, 1.6, 1.9])],
     ];
     for (const theme of themes) {
@@ -516,6 +516,8 @@ export async function dance(tag = 'dance', themes = ['classic']) {
           o.t = t;
           o.poseT = t;
           o._lp = pose;
+          o._blendPose = pose; // a still frame: no blend from the previous cell
+          o._blendFrom = null;
           performance.now = () => 1000000 + t * 1000;
           const c = frameC();
           sh.put(k++, c, x - 32, 84, `${label} ${t.toFixed(2)}s`);
