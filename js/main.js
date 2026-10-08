@@ -142,7 +142,7 @@
           `session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'}`,
           `music ${Math.round(A.levels.music * 100)}% → bus ${A.rms ? db(A.rms('music')) : '-'}`,
           `fx ${Math.round(A.levels.fx * 100)}% → bus ${A.rms ? db(A.rms('fx')) : '-'}`,
-          `stream ${A.streamStatus || '-'}${A.streamDirect && A.streamDirect() ? ' (direct: slider mutes only)' : ''} · ${A.rms ? db(A.rms('stream')) : '-'}`,
+          `stream ${A.streamStatus || '-'}${A._decoded && A._decoded() ? ' (decoded here)' : ''}${A.streamDirect && A.streamDirect() ? ' (direct: slider mutes only)' : ''} · ${A.rms ? db(A.rms('stream')) : '-'}`,
         ].join('\n');
       }, 250);
     }

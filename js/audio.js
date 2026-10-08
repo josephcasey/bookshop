@@ -517,6 +517,16 @@
   /** Start, switch or stop the live stream to match the current station and sound setting. */
   function syncStream() {
     const url = A.enabled && ctx && radioSt && radioSt.stream;
+    if (ctx && useDecoder()) {
+      if (!url) {
+        stopDecoded();
+        setStreamStatus(null);
+      } else if (!decoded || decoded.url !== url) {
+        streamRetry = 0;
+        startDecoded(url);
+      } else decoded.out.gain.value = radioSt.gain || 1.6;
+      return;
+    }
     if (direct) {
       // already playing streams directly (this browser can't route them): just follow the station
       if (!url) {
@@ -534,11 +544,7 @@
       return;
     }
     if (!url) {
-      if (streamEl && streamEl.getAttribute('src')) {
-        streamEl.pause();
-        streamEl.removeAttribute('src'); // stop downloading
-        streamEl.load();
-      }
+      if (streamEl && streamEl._url) setSrc(streamEl, null); // stop downloading
       setStreamStatus(null);
       return;
     }
@@ -559,16 +565,16 @@
       });
       streamEl.addEventListener('waiting', () => setStreamStatus('tuning'));
       streamEl.addEventListener('error', () => {
-        if (!streamEl.getAttribute('src')) return;
+        if (!streamEl._url) return;
         setStreamStatus('error');
         // live streams drop out: try again a few times, then give up until retuned
-        if (streamRetry++ < 4) setTimeout(() => radioSt && radioSt.stream && ((streamEl.src = radioSt.stream), streamEl.play().catch(() => {})), 8000);
+        if (streamRetry++ < 4) setTimeout(() => radioSt && radioSt.stream && (setSrc(streamEl, radioSt.stream), streamEl.play().catch(() => {})), 8000);
       });
     }
     streamEl._gain.gain.value = radioSt.gain || 1.6;
-    if (streamEl.getAttribute('src') !== url) {
+    if (streamEl._url !== url) {
       streamRetry = 0;
-      streamEl.src = url;
+      setSrc(streamEl, url);
       setStreamStatus('tuning');
     }
     streamEl.play().catch((e) => {
@@ -576,6 +582,177 @@
       setStreamStatus('error');
     });
   }
+  // ---------- live streams in Safari / on iPhone ----------
+  // WebKit hands a live stream to Web Audio as silence (a media element's output can't be tapped there, for a
+  // cross-origin stream or a Media Source alike), which left the music slider unable to touch the radio on an iPhone.
+  // So there we fetch the stream ourselves, cut it into MP3 (or ADTS AAC) frames, decode ~2 s batches natively
+  // (decodeAudioData; each batch overlaps the last by a few frames, trimmed off, to hide the decoder's warm-up) and play
+  // them as back-to-back buffers into the radio's speaker: the slider controls it like any other music.
+  // (WebCodecs' AudioDecoder decodes MP3 well below real time in Safari, so it isn't used.)
+  const useDecoder = () => typeof window !== 'undefined' && !!window.ManagedMediaSource; // (Safari: macOS 17+, iOS 17.1+)
+  function setSrc(el, url) {
+    el._url = url;
+    if (!url) {
+      el.pause();
+      el.removeAttribute('src');
+      el.load();
+      return;
+    }
+    el.src = url;
+  }
+  const MP3_RATES = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] };
+  const MP3_KBPS = {
+    1: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320], // MPEG-1 layer III
+    2: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160], // MPEG-2/2.5 layer III
+  };
+  const AAC_RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+  /** The next whole frame in buf at or after i: { at, len, rate, ch, samples, codec } or null (need more bytes). */
+  function nextFrame(buf, i, n) {
+    for (; i + 7 < n; i++) {
+      if (buf[i] !== 0xff || (buf[i + 1] & 0xe0) !== 0xe0) continue;
+      const b1 = buf[i + 1];
+      const b2 = buf[i + 2];
+      if ((b1 & 0xf6) === 0xf0) {
+        // ADTS AAC
+        const sr = AAC_RATES[(b2 >> 2) & 0x0f];
+        const ch = ((b2 & 1) << 2) | (buf[i + 3] >> 6);
+        const len = ((buf[i + 3] & 3) << 11) | (buf[i + 4] << 3) | (buf[i + 5] >> 5);
+        if (!sr || !ch || len < 7) continue;
+        if (i + len > n) return { wait: i };
+        return { at: i, len, rate: sr, ch, samples: 1024, codec: 'mp4a.40.2' };
+      }
+      const ver = (b1 >> 3) & 3; // 3 = MPEG-1, 2 = MPEG-2, 0 = MPEG-2.5
+      const layer = (b1 >> 1) & 3; // 1 = layer III
+      if (ver === 1 || layer !== 1) continue;
+      const kbps = MP3_KBPS[ver === 3 ? 1 : 2][(b2 >> 4) & 0x0f];
+      const sr = MP3_RATES[ver][(b2 >> 2) & 3];
+      if (!kbps || !sr) continue;
+      const pad = (b2 >> 1) & 1;
+      const len = Math.floor(((ver === 3 ? 144 : 72) * kbps * 1000) / sr) + pad;
+      if (i + len > n) return { wait: i };
+      // a real frame is followed by another sync word: guards against false syncs in the data
+      if (i + len + 1 < n && (buf[i + len] !== 0xff || (buf[i + len + 1] & 0xe0) !== 0xe0)) continue;
+      return { at: i, len, rate: sr, ch: (buf[i + 3] >> 6) === 3 ? 1 : 2, samples: ver === 3 ? 1152 : 576, codec: 'mp3' };
+    }
+    return { wait: i };
+  }
+  let decoded = null; // the running decoded stream: { url, stop }
+  function startDecoded(url) {
+    stopDecoded();
+    const ctrl = new AbortController();
+    const out = ctx.createGain();
+    out.gain.value = (radioSt && radioSt.gain) || 1.6;
+    out.connect(radioIn);
+    out.connect(A.meters.stream);
+    const me = { url, out, stats: { frames: 0, chunks: 0, decoded: 0, lead: 0, err: null } };
+    A._decoded = () => decoded;
+    let nextT = 0;
+    let chain = Promise.resolve();
+    const OVER = 3; // frames carried over from the last batch: the decoder's warm-up, trimmed off again
+    let carry = []; // the last OVER frames of the previous batch
+    let batch = [];
+    let spf = 1152;
+    let srcRate = 44100;
+    // decode a batch (with the carried-over frames in front), trim the warm-up, schedule it right after the last
+    const submit = (frames) => {
+      const lead = carry.length;
+      const all = carry.concat(frames);
+      carry = frames.slice(-OVER);
+      let n = 0;
+      for (const f of all) n += f.length;
+      const bytes = new Uint8Array(n);
+      let o = 0;
+      for (const f of all) {
+        bytes.set(f, o);
+        o += f.length;
+      }
+      const want = frames.length * spf; // samples (at the stream's rate) this batch should contribute
+      chain = chain.then(() =>
+        ctx.decodeAudioData(bytes.buffer).then(
+          (ab) => {
+            if (decoded !== me) return;
+            const k = ab.sampleRate / srcRate;
+            const skip = Math.round(lead * spf * k);
+            const len = Math.min(ab.length - skip, Math.round(want * k));
+            if (len <= 0) return;
+            const piece = ctx.createBuffer(ab.numberOfChannels, len, ab.sampleRate);
+            for (let c = 0; c < ab.numberOfChannels; c++) piece.copyToChannel(ab.getChannelData(c).subarray(skip, skip + len), c);
+            const now = ctx.currentTime;
+            if (nextT < now + 0.05) {
+              nextT = now + 0.3; // (re)start with a little in hand
+              setStreamStatus('playing');
+            }
+            if (nextT - now > 3) return; // the server's opening burst, or the tab slept: skip ahead to stay near live
+            const src = ctx.createBufferSource();
+            src.buffer = piece;
+            src.connect(out);
+            src.start(nextT);
+            nextT += piece.duration;
+            me.stats.chunks++;
+            me.stats.decoded += piece.duration;
+            me.stats.lead = +(nextT - now).toFixed(2);
+          },
+          (e) => {
+            me.stats.err = String(e && e.message);
+          },
+        ),
+      );
+    };
+    const run = async () => {
+      try {
+        const r = await fetch(url, { signal: ctrl.signal });
+        const rd = r.body.getReader();
+        let buf = new Uint8Array(0);
+        for (;;) {
+          const { value, done } = await rd.read();
+          if (done) break;
+          const nb = new Uint8Array(buf.length + value.length);
+          nb.set(buf);
+          nb.set(value, buf.length);
+          buf = nb;
+          let i = 0;
+          for (;;) {
+            const f = nextFrame(buf, i, buf.length);
+            if (f.wait != null) {
+              i = f.wait;
+              break;
+            }
+            spf = f.samples;
+            srcRate = f.rate;
+            batch.push(buf.slice(f.at, f.at + f.len));
+            me.stats.frames++;
+            i = f.at + f.len;
+            // the first batch short, to start quickly; then ~2 s at a time
+            if (batch.length >= (me.stats.chunks || nextT ? Math.round((2 * f.rate) / f.samples) : Math.round((0.8 * f.rate) / f.samples))) {
+              submit(batch);
+              batch = [];
+            }
+          }
+          buf = buf.slice(i); // keep only the unfinished tail
+        }
+        if (!ctrl.signal.aborted) throw new Error('stream ended');
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        console.warn('[bookshop] stream', url, e && e.message);
+        setStreamStatus('error');
+        // live streams drop out: try again a few times
+        if (streamRetry++ < 4) setTimeout(() => decoded === me && startDecoded(url), 8000);
+      }
+    };
+    me.stop = () => {
+      ctrl.abort();
+      out.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+      setTimeout(() => out.disconnect(), 500);
+    };
+    decoded = me;
+    setStreamStatus('tuning');
+    run();
+  }
+  function stopDecoded() {
+    if (decoded) decoded.stop();
+    decoded = null;
+  }
+
   // ---------- is the stream reaching Web Audio? ----------
   const rms = (an) => {
     if (!an) return 0;
@@ -589,19 +766,24 @@
   let direct = null; // the fallback: an unrouted element
   function checkRouted() {
     if (direct) return;
-    setTimeout(() => {
-      if (!streamEl || streamEl.paused || A.streamStatus !== 'playing') return;
-      if (rms(A.meters.stream) > 1e-5) return; // coming through: the music slider controls it
-      // silence through Web Audio while the element says it's playing: play it directly instead
+    // sample for a while: a stream takes a moment to reach Web Audio, and iOS may briefly interrupt the context
+    let heard = false;
+    let n = 0;
+    const iv = setInterval(() => {
+      if (!streamEl || streamEl.paused || A.streamStatus !== 'playing') return clearInterval(iv);
+      if (ctx.state === 'running' && rms(A.meters.stream) > 1e-5) heard = true;
+      if (heard) return clearInterval(iv);
+      if (++n < 16) return; // keep listening
+      clearInterval(iv);
+      // silence through Web Audio for 8 s while the element says it's playing: play it directly instead
       console.warn('[bookshop] stream silent through Web Audio; playing it directly');
       direct = new Audio();
-      direct.src = streamEl.src;
-      streamEl.pause();
-      streamEl.removeAttribute('src');
+      direct.src = streamEl._url;
+      setSrc(streamEl, null);
       direct.addEventListener('playing', () => setStreamStatus('playing'));
       direct.play().catch(() => setStreamStatus('error'));
       applyDirect();
-    }, 3000);
+    }, 500);
   }
   function applyDirect() {
     if (!direct) return;
