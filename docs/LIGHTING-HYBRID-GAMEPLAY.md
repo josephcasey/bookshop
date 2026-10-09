@@ -14,6 +14,9 @@ click it again to return to the exact lighting state that was active before the 
 
 - Keeps the current hand-authored projection as cinematic fill so faces, shelves and composition remain readable.
 - Makes the outdoor weather light cooler and the shop practicals warmer and more local, especially on overcast days.
+- On clear mornings, treats the sunlit terrace opposite as a warm directional reflector: it lifts the shaded facade
+  and projects a gently sloping window/fascia cutoff across the shop. Cloud, rain and fog suppress the effect.
+- Strengthens the sun-facing side of the facade and the authored interior sun blade later in the day.
 - Adds receiver-aware direct light for sun and vehicle beams, including occlusion by glazing bars, people and props.
 - Solves only the direct-light overlay on a 4×4 grid. The Cyber artwork and final canvas remain 320×180. The
   restrained full-resolution authored fill underneath hides the coarse grid while the overlay supplies depth breaks.

@@ -74,8 +74,8 @@ export async function run() {
   const now0 = performance.now.bind(performance);
   const screen = document.querySelector('#screen');
   const g = screen.getContext('2d');
-  const full = sheet(6, [0, 0, 320, 180], 2);
-  const close = sheet(6, [5, 72, 212, 94], 3);
+  const full = sheet(7, [0, 0, 320, 180], 2);
+  const close = sheet(7, [5, 72, 212, 94], 3);
   const report = [];
   let seed = 1;
 
@@ -109,6 +109,7 @@ export async function run() {
     B.shopLamps.lastMain = s.shop.lights;
   };
   const scenarios = [
+    { id: 'clear-morning', label: 'clear morning 08:27, facade bounce', hour: () => 8.45, weather: 'clear', cloud: 0.08, lamps: ['desk'] },
     { id: 'overcast', label: 'overcast midday', hour: () => B.sunPos(12).noon, weather: 'cloudy', cloud: 0.96, lamps: ['pendantL', 'pendantR', 'desk'] },
     { id: 'rain-day', label: 'rainy afternoon', hour: () => B.sunTime(18, true), weather: 'rain', cloud: 0.94, lamps: ['pendantL', 'pendantR', 'desk'] },
     { id: 'sun', label: 'clear afternoon, sun 22°', hour: () => B.sunTime(22, true), weather: 'clear', cloud: 0.12, lamps: ['pendantR', 'desk'] },
