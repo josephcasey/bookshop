@@ -118,7 +118,13 @@
     const a = s.abduction;
     const o = s.owner;
     if (!a) return;
-    if (!a.returning && s.simT >= a.back) {
+    if (!a.returning && s.simT < a.back) {
+      // still away: whatever else is going on, nobody sees her until she's back
+      o.hidden = true;
+      o.alpha = 0;
+      return;
+    }
+    if (!a.returning) {
       // back again, alone
       a.returning = s.simT;
       o.hidden = false;
