@@ -1216,6 +1216,14 @@
     mk,
     snaps,
     setMain: (c) => (mainCanvas = c),
+    // The relighting prototypes use the same authored lamps and vehicle events, but solve visibility with a
+    // receiver/depth buffer instead of this file's projected-mask compositor. Return fresh objects so a prototype
+    // can tune them without changing the live renderer's sources.
+    sources: (s) => {
+      const day = B.daylight(s.hour);
+      const dark = Math.min(1, (1 - day) * 1.1 + (s.weather.cloud || 0) * 0.15);
+      return lightsBehind(s, dark).map((src) => Object.assign({}, src));
+    },
   });
 
   // ---------- each frame ----------

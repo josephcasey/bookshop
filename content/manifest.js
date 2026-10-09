@@ -28,6 +28,7 @@ window.Bookshop.manifest = [
   'features/alley.js',
   'features/weather.js',
   'features/offscreen-lights.js',
+  'features/relight-v2.js',
   'features/sunlight.js',
   'features/opposite-street.js',
   'features/street-crew.js',

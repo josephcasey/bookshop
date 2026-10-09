@@ -56,3 +56,19 @@ These are the agreed keepers from the review. A failing check that touches them 
   - Actors cut out of and lit flat by the outside light.
   - The 2×2 checker only on light ramps.
   - The untouched daytime frame.
+
+## Receiver-buffer comparison (SCH-30)
+
+The first alternate-lighting prototype can be enabled interactively with `?lighting=relight-v2`. It replaces the
+production window projection and interior sun patch with one per-pixel visibility solver, while retaining the
+production facade, glass reflection and shop lamps.
+
+For deterministic review stills, run the dev server and sink, then open:
+
+```text
+http://localhost:8123/?relight-comparison&date=2026-06-21
+```
+
+The page writes three current-versus-alternate sheets to `tools/lighting-reel/out/`: a seven-scenario classic sheet,
+an enlarged interior crop, and a three-scenario cyber-theme check. The harness creates a fresh world, freezes its
+clock and seeds randomness, so reruns are directly comparable.

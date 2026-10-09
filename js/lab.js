@@ -380,4 +380,17 @@
     canvas.addEventListener('mousemove', (e) => e.buttons && move(e));
     canvas.addEventListener('mousedown', move);
   });
+
+  // Developer-only deterministic capture. Kept behind a query parameter so the live game never downloads or runs
+  // the comparison harness; opening ?relight-comparison produces the SCH-30 contact sheets through the local sink.
+  if (B.params && B.params.has('relight-comparison')) {
+    B.on('ready', () => {
+      import('../tools/lighting-reel/relight-comparison.js')
+        .then((m) => m.run())
+        .catch((error) => {
+          console.error('[bookshop] relight comparison', error);
+          window.__relightComparison = { done: true, error: String(error && error.stack ? error.stack : error) };
+        });
+    });
+  }
 })();
