@@ -7,6 +7,9 @@
  * A generic homage: no names, no catchphrases, no borrowed sounds; the teleport shimmer and its chime are original. */
 (function (B) {
   const name = () => B.ownerName();
+  // where it happens: in front of the bookcase just right of the poetry alcove, clear of the counter, so her face (and
+  // the implants on it) can be seen
+  const SPOT = 118;
   const sparkle = (s, x, top, bottom, n = 14) => {
     for (let i = 0; i < n; i++)
       s.particle({ layer: 'in', x: x + B.rnd(-5, 5), y: B.rnd(top, bottom), vx: 0, vy: B.rnd(-14, -4), life: B.rnd(0.4, 1), c: B.pick(['#e8f4ff', '#9fd8ff', '#ffffff', '#c8b8ff']) });
@@ -32,7 +35,7 @@
     *run(s) {
       s.dayStats.droneVisits = 1;
       const o = s.owner;
-      B.spawn(s, 'drone-visitor', { props: { area: 'inside', depth: 'front', x: B.clamp(o.x + (o.x > 150 ? -22 : 22), 30, 200), alpha: 0, umbrella: false } });
+      B.spawn(s, 'drone-visitor', { props: { area: 'inside', depth: 'front', x: SPOT + 26, alpha: 0, umbrella: false } });
     },
   });
 
@@ -53,9 +56,10 @@
         sparkle(s, n.x, B.headTop(n), n.y, 6);
         yield 0.1;
       }
-      n.face(o.x > n.x ? 1 : -1);
       s.request('meet-drone', 9, { drone: n });
-      yield n.walkTo(o.x + (o.x > n.x ? -12 : 12));
+      // it waits for her to reach the bookcase, then steps up beside her
+      for (let w = 0; w < 10 && Math.abs(o.x - SPOT) > 2; w += 0.2) yield 0.2;
+      yield n.walkTo(o.x + 12);
       n.face(o.x > n.x ? 1 : -1);
       n.pose = 'point';
       n.tubules = 1;
@@ -90,6 +94,9 @@
     resume: false,
     *run(s, o, d) {
       const n = d && d.drone;
+      // she's drawn to the bookcase by the poetry alcove, out from behind the counter, and turns to face it
+      o.depth = 'back';
+      yield o.go(SPOT);
       o.face(n && n.x > o.x ? 1 : -1);
       o.emote('bang', 1.2);
       o.pose = 'stand';
@@ -110,7 +117,7 @@
       B.log(`${name()} and her visitor dissolve into sparkles. The shop is very quiet.`);
       // she comes back ten seconds later whatever else happens (a tick hook below brings her back, so nothing that
       // interrupts this activity can leave her away for good); meanwhile she's busy being elsewhere
-      s.abduction = { back: s.simT + 10 };
+      s.abduction = { back: s.simT + 10, x: o.x };
       while (s.abduction) yield 0.2;
     },
   });
@@ -129,6 +136,10 @@
       a.returning = s.simT;
       o.hidden = false;
       o.area = 'inside';
+      o.depth = 'back';
+      o.x = a.x; // just where she was taken from, by the bookcase
+      o.moving = false;
+      o.face(0); // facing us, implants and all
       o.alpha = 0;
       B.audio.play('shimmer', true);
       B.log(`${name()} shimmers back into the shop, alone, blinking, gadgets still clamped to her face.`);
@@ -151,6 +162,7 @@
     weight: (s, o) => (o.implants > 0 && !o.hidden ? 50 : 0),
     when: (s, o) => o.implants > 0 && !o.hidden && !s.abduction && o.area === 'inside',
     *run(s, o) {
+      o.face(0);
       yield 1.2;
       const bits = ['the eyepiece', 'the cheek plate', 'the neck tube'];
       while (o.implants > 0) {
