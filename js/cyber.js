@@ -751,11 +751,18 @@
   function drawDisplay(g, s) {
     // the window display stands on two low benches at the old sill height (the glass now runs to the floor, and
     // the middle is kept clear: she dances there): a board, its lit edge, a front lip, two legs each
+    // In the neon city they're brushed-steel plinths with a lit edge and an LED strip under the lip, bright enough
+    // to read against the dark shelves, so it's plain what the cat is lying on.
     for (const [x0, w] of [[9, 62], [186, 25]]) {
-      px(g, '#3a3f4a', x0, 144, w, 2);
-      px(g, '#5a6070', x0, 144, w, 1);
-      px(g, '#22252e', x0, 146, w, 1);
-      for (const lx of [x0 + 2, x0 + w - 4]) px(g, '#22252e', lx, 147, 2, 14);
+      px(g, '#9aa2b4', x0, 144, w, 1); // the lit top edge
+      px(g, '#5e6676', x0, 145, w, 2); // the board's front
+      px(g, '#3a3f4a', x0, 147, w, 1); // its lip
+      px(g, 'rgba(63,245,255,0.55)', x0 + 1, 148, w - 2, 1); // an LED strip under the lip
+      px(g, 'rgba(63,245,255,0.18)', x0 + 1, 149, w - 2, 2); // its glow on the shelf below
+      for (const lx of [x0 + 2, x0 + w - 4]) {
+        px(g, '#4a5060', lx, 148, 2, 13); // the legs, to the floor
+        px(g, '#7a8294', lx, 148, 1, 13); // lit down one side
+      }
     }
     const cols = s.display.cols;
     const wet = s.plant.water > 0.3;
