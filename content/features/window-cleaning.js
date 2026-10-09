@@ -1,6 +1,7 @@
 /* 2026-10-09 (SCH-34: the window cleaner, by hand)
  * The window cleaner now does the shop window and the door by hand. A spritz from the spray bottle, then the
- * squeegee in S-strokes from the top of the glass to the bottom, with a flick to clear the blade every few rows. The
+ * squeegee in S-strokes from the top of the glass to the bottom, with a flick to clear the blade every few rows (their
+ * own arm does it, and their body hides the squeegee as it passes behind them, SCH-35). The
  * glass reaches higher than they can, so they wear extending stilt boots: the struts telescope up for the top rows
  * and back down as they work lower, and they crouch for the bottom.
  * - Call them yourself: a quick side-to-side wipe over the shop window (mouse, or a finger on a phone) waves the
@@ -84,6 +85,13 @@
   // ---------- the cleaner, by hand ----------
   B.audio.define('spritz', ({ noise, street }, x = 160) => noise(0.12, { ftype: 'highpass', freq: 4000, q: 0.6, vol: 0.02, a: 0.005, pan: clamp(x / 160 - 1, -0.9, 0.9), bus: street }));
   B.audio.define('stilts', ({ tone, street }, x = 160, up = true) => tone(up ? 260 : 340, 0.3, { type: 'square', vol: 0.004, slide: up ? 340 : 260, lp: 900, pan: clamp(x / 160 - 1, -0.9, 0.9), bus: street }));
+  // the squeegee: a rubbery drag for the length of each stroke (pitch rising with its speed), a squeak at the turn
+  B.audio.define('squeegee', ({ noise, tone, street }, x = 160, dur = 0.4, speed = 1) => {
+    const pan = clamp(x / 160 - 1, -0.9, 0.9);
+    noise(dur, { ftype: 'bandpass', freq: 900 + 500 * speed, q: 6, vol: 0.016, a: 0.03, r: 0.06, pan, bus: street });
+    tone(620 + 180 * speed, dur, { type: 'sawtooth', vol: 0.0035, slide: 760 + 220 * speed, lp: 1800, a: 0.03, pan, bus: street });
+    tone(1700 + Math.random() * 500, 0.06, { type: 'triangle', vol: 0.007, slide: 2300, at: dur - 0.02, pan, bus: street });
+  });
   const mist = [];
   B.visitor({
     id: 'window-cleaner',
@@ -109,12 +117,22 @@
       reaches.sort((p, q) => dirty(q) - dirty(p));
       yield n.walkTo(W.x + 14);
       B.log(dirty(reaches[0]) ? 'The window cleaner makes a beeline for the pigeon mess on the glass.' : B.pick(['The window cleaner is here: spray bottle, squeegee and those extending boots.', 'Squeak, squeak: the window cleaner is doing the front by hand.']));
-      // move the hand to (x, y), telescoping the stilts up or down as it goes (or crouching) to keep it in reach
-      function* reachTo(x, y, sec) {
-        const top = shoulderY() + n.lift - REACH; // the highest point reachable standing on the ground
-        const wantLift = clamp(Math.ceil(top - y), 0, 18);
+      // where their shoulder is when standing on the pavement: everything is measured from this, so the stance and the
+      // stilts don't chase themselves as the figure rises and crouches
+      n.pose = 'backstand';
+      n.lift = 0;
+      const S0 = shoulderY();
+      let crouched = false;
+      // move the hand to (x, y), telescoping the stilts up or down as it goes, or crouching for the low rows
+      function* reachTo(x, y, sec, sound = false) {
+        const wantLift = clamp(Math.ceil(S0 - REACH - y), 0, 18);
+        // the stance is chosen once per stroke, with a dead band, so it never flutters at the threshold
+        if (!crouched && y > S0 + REACH + 4) crouched = true;
+        else if (crouched && y < S0 + REACH - 6) crouched = false;
+        n.pose = crouched ? 'crouch' : 'backstand';
         const fromLift = n.lift;
         if (Math.abs(wantLift - fromLift) > 2) B.audio.play('stilts', n.x, wantLift > fromLift);
+        if (sound) B.audio.play('squeegee', x, sec, clamp(Math.abs(x - h.gx) / sec / 80, 0.3, 1.5));
         const fx = h.gx;
         const fy = h.gy;
         const steps = Math.max(1, Math.round(sec / 0.04));
@@ -123,7 +141,7 @@
           n.lift = Math.round(fromLift + (wantLift - fromLift) * q);
           h.gx = fx + (x - fx) * q;
           h.gy = fy + (y - fy) * q;
-          n.pose = h.gy > shoulderY() + REACH + 2 ? 'crouch' : 'backstand';
+          n.armTo = h.tool ? [Math.round(h.gx), Math.round(h.gy) + 1] : null; // the cleaner's own arm does the work
           if (h.tool === 'squeegee') {
             for (let i = binOf(h.gx - 3); i <= binOf(h.gx + 3); i++) {
               if (B.crew) {
@@ -141,7 +159,7 @@
         n.face('away');
         n.pose = 'backstand';
         h.gx = n.x;
-        h.gy = shoulderY() + 6;
+        h.gy = S0 + 6;
         // a spritz or three from the bottle
         h.tool = 'bottle';
         for (const [fx, fy] of [[a + 4, top + 6], [(a + b) / 2, (top + bot) / 2], [b - 4, bot - 8]]) {
@@ -157,21 +175,22 @@
         for (let y = top; y <= bot; y += 5, row++) {
           const l2r = row % 2 === 0;
           yield* reachTo(l2r ? a : b, y, 0.12);
-          yield* reachTo(l2r ? b : a, y, Math.max(0.25, (b - a) * 0.025));
-          if (B.chance(0.3)) B.audio.play('squeak', h.gx);
+          yield* reachTo(l2r ? b : a, y, Math.max(0.25, (b - a) * 0.025), true);
           if (row % 4 === 3) {
             const hx = h.gx;
             const hy = h.gy;
-            yield* reachTo(n.x - 4, shoulderY() + 8, 0.15); // a flick: off the blade, onto the pavement
-            mist.push({ x: n.x - 6, y: shoulderY() + 10, t: 0, drip: true });
+            yield* reachTo(n.x - 4, S0 + 8, 0.15); // a flick: off the blade, onto the pavement
+            mist.push({ x: n.x - 6, y: S0 + 10, t: 0, drip: true });
             yield 0.12;
             yield* reachTo(hx, hy, 0.12);
           }
         }
         // boots back down, and on to the next stretch
         h.tool = null;
-        yield* reachTo(n.x, shoulderY() + n.lift + 6, 0.3);
+        yield* reachTo(n.x, S0 + 6, 0.3);
         n.lift = 0;
+        n.armTo = null;
+        crouched = false;
         n.pose = 'stand';
       }
       if (s.shop.open && s.owner.area === 'inside' && B.chance(0.6)) {
@@ -183,10 +202,11 @@
     },
   });
 
-  // the stilts, arm and tools: in front of the glass (and of the cleaner)
+  // the stilts, tools and mist: on the glass, behind the cleaner (who faces it, so their body hides the squeegee as it
+  // passes behind them); their own arm, drawn with the figure, holds the tool
   B.decor({
     id: 'cleaner-hands',
-    layer: 'overlay',
+    layer: 'street',
     draw(g, s) {
       const P = (c, x, y, w = 1, h = 1) => B.px(g, c, Math.round(x), Math.round(y), w, h);
       for (let i = mist.length - 1; i >= 0; i--) {
@@ -216,14 +236,8 @@
       }
       const h = n.hand;
       if (!h.tool) return;
-      // the working arm: from the shoulder to the tool, in the jacket's navy, with a hand
-      const sx = Math.round(n.x) + 2;
-      const sy = Math.round(B.headTop(n) + 12);
       const hx = Math.round(h.gx);
       const hy = Math.round(h.gy);
-      B.line(g, sx, sy, hx, hy + 2, '#2a3a5a');
-      B.line(g, sx + 1, sy, hx + 1, hy + 2, '#2a3a5a');
-      P('#d9a47e', hx, hy + 1, 2, 2); // the hand
       if (h.tool === 'squeegee') {
         P('#c8ccd4', hx, hy - 1, 1, 2); // the handle
         P('#20242c', hx - 3, hy - 2, 7, 1); // the rubber blade

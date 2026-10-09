@@ -698,6 +698,15 @@
     const half = side ? 4 : 5; // shoulder half-width: narrower in profile
     const fsx = fd > 0 ? cx + half - 1 : cx - half;
     const bsx = fd > 0 ? cx - half : cx + half - 1;
+    if (a.armTo) {
+      // the front hand reaching for a point in the world (the window cleaner's squeegee, window-cleaning.js): the
+      // elbow bends out and down halfway
+      const tx = a.armTo[0] - a.x + cx;
+      const ty = a.armTo[1] - (a.y - (a.lift || 0)) + fy;
+      const dx = Math.round((tx - fsx) * fd);
+      const dy = Math.round(ty - (sy + 1));
+      fA = [[Math.round(dx * 0.5) + 2, Math.round(dy * 0.5) + 2], [dx, dy]];
+    }
     const joint = (sx, [e, hnd]) => ({ e: [sx + e[0] * fd, sy + 1 + e[1]], h: [sx + hnd[0] * fd, sy + 1 + hnd[1]] });
     const fJ = joint(fsx, fA);
     const bJ = joint(bsx, bA);
