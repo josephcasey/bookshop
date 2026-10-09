@@ -161,11 +161,13 @@
     if (sun) sources.push(sun);
     if (kit.sources) {
       const fogTransmission = Math.exp(-1.2 * ((s.weather && s.weather.fog) || 0));
+      const direction = B.lightingDirection && B.lightingDirection.enabled ? B.lightingDirection.values(s) : null;
+      const interiorTransmission = s.shop.lights ? (direction ? direction.externalTransmission : 0.35) : 1;
       for (const source of kit.sources(s)) {
         // A broad pub window or street lamp should provide a quiet fill, not expose the whole unlit room as if a
         // ceiling lamp were on. Sharp vehicle beams remain the dominant night-time story.
         const scale = source.aim != null ? 0.96 : source.soft ? 0.34 : 0.5;
-        source.a *= scale * fogTransmission;
+        source.a *= scale * fogTransmission * interiorTransmission;
         if (source.a > 0.008) sources.push(source);
       }
     }

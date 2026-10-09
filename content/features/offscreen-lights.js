@@ -1384,7 +1384,8 @@
           }
         }
         // through the windows
-        const indoorDark = s.shop.lights ? 0.35 : 1;
+        const direction = B.lightingDirection && B.lightingDirection.enabled ? B.lightingDirection.values(s) : null;
+        const indoorDark = s.shop.lights ? (direction ? direction.externalTransmission : 0.35) : 1;
         qg.clearRect(0, 0, W, H);
         ag.clearRect(0, 0, W, H);
         const behind = F.projection ? lightsBehind(s, dark) : [];

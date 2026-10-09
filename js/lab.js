@@ -393,4 +393,16 @@
         });
     });
   }
+
+  // SCH-30's art-direction comparison: production, tuned production, and tuned receiver-buffer under identical scenes.
+  if (B.params && B.params.has('contrast-comparison')) {
+    B.on('ready', () => {
+      import('../tools/lighting-reel/contrast-comparison.js')
+        .then((m) => m.run())
+        .catch((error) => {
+          console.error('[bookshop] contrast comparison', error);
+          window.__contrastComparison = { done: true, error: String(error && error.stack ? error.stack : error) };
+        });
+    });
+  }
 })();

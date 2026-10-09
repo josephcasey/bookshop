@@ -72,3 +72,17 @@ http://localhost:8123/?relight-comparison&date=2026-06-21
 The page writes three current-versus-alternate sheets to `tools/lighting-reel/out/`: a seven-scenario classic sheet,
 an enlarged interior crop, and a three-scenario cyber-theme check. The harness creates a fresh world, freezes its
 clock and seeds randomness, so reruns are directly comparable.
+
+### Art-direction contrast comparison
+
+To compare lighting taste separately from lighting geometry, open:
+
+```text
+http://localhost:8123/?contrast-comparison&date=2026-06-21
+```
+
+This writes `SCH-30-contrast-classic.png`, `SCH-30-contrast-interior.png` and `SCH-30-contrast-cyber.png`. Each row
+uses the same scene and presents three columns: production lighting; the production solver with cooler weather
+ambience and warmer, more directional practical lights; and the receiver-buffer solver with that identical art
+direction. The report embedded in the page records the visual delta, warm/cool separation and highlight-to-shadow
+span for each treatment.
