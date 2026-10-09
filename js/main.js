@@ -312,8 +312,8 @@
       const r = canvas.getBoundingClientRect();
       return [((e.clientX - r.left) / r.width) * B.W, ((e.clientY - r.top) / r.height) * B.H];
     };
-    // ----- the build number: hover over (or tap) the CINEMA sign in the alley -----
-    const onSign = (x, y) => x >= 282 && x < 305 && y >= 62 && y < 128;
+    // ----- the build number: hover over (or tap) the holo billboard at the far end of the alley, top right -----
+    const onSign = (x, y) => x >= 297 && x < 317 && y >= 14 && y < 40; // (js/cyber.js: hb = 300,18 13x18)
     const buildTip = document.createElement('div');
     buildTip.id = 'buildTip';
     Object.assign(buildTip.style, {

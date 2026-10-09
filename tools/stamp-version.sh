@@ -2,7 +2,7 @@
 # Writes js/version.js: the build number (this commit's position on the branch), the date, and the commit it follows.
 # Run by the pre-commit hook (tools/git-hooks/pre-commit; install with `git config core.hooksPath tools/git-hooks`),
 # so every commit, and so every push to the live site, carries its own build number. Shown by hovering or tapping
-# the CINEMA sign in the alley.
+# the holo billboard at the far end of the alley.
 cd "$(git rev-parse --show-toplevel)" || exit 0
 n=$(( $(git rev-list --count HEAD 2>/dev/null || echo 0) + 1 ))
 parent=$(git rev-parse --short HEAD 2>/dev/null || echo none)
