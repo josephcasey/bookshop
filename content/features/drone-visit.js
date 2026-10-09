@@ -2,7 +2,7 @@
  * Very rarely, when the shop is quiet, a pale cybernetic drone in black armour (a red-lit eyepiece, tubes at the
  * neck) shimmers into the shop in a column of sparkling light, walks up to Mabel and reaches out with a cluster of
  * tubules. When it lets go she has an eyepiece, a cheek plate and a tube at her neck, and the two of them dissolve
- * into sparkles. A minute or two later Mabel shimmers back, alone and a little dazed, prises off each implant (they
+ * into sparkles. Ten seconds later Mabel shimmers back, alone and a little dazed, prises off each implant (they
  * clatter onto the counter) and tidies them into the drawer under the counter.
  * A generic homage: no names, no catchphrases, no borrowed sounds; the teleport shimmer and its chime are original. */
 (function (B) {
@@ -108,7 +108,7 @@
       }
       o.hidden = true;
       B.log(`${name()} and her visitor dissolve into sparkles. The shop is very quiet.`);
-      yield B.rnd(60, 120);
+      yield 10; // back after ten seconds, so the whole thing can be watched
       // back again, alone
       o.hidden = false;
       B.audio.play('shimmer', true);
