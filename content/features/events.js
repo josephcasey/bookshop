@@ -13,7 +13,7 @@
   const name = () => B.ownerName();
   const L = () => B.LAYOUT;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const CAFE_X = 104; // the café table, in front of the poetry-side bookcase
+  const CAFE_X = 120; // the café table, in front of the poetry-side bookcase (clear of the arch's post)
   const SEATS = [CAFE_X - 10, CAFE_X + 10];
   const GAME_TABLES = [40, 160];
   // the week: s.day % 7
@@ -381,9 +381,9 @@
       const cy = B.theme === 'cyber';
       const P = (c, x, y, w = 1, h = 1) => B.px(g, c, x, y, w, h);
       const floor = L().stageY; // feet on the floor in front of the counter
-      const steel = cy ? '#5e6676' : '#6b4226';
-      const lit = cy ? '#9aa2b4' : '#8a5a36';
-      const dark = cy ? '#2c303b' : '#4a2c17';
+      const steel = cy ? '#7a8294' : '#6b4226';
+      const lit = cy ? '#c4cad6' : '#8a5a36';
+      const dark = cy ? '#4a5060' : '#4a2c17';
       // the café table and its two chairs
       if (W.cafe) {
         const C = cafe(s);
