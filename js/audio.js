@@ -5,7 +5,7 @@
   const B = window.Bookshop;
   const A = (B.audio = { enabled: false });
   let ctx = null;
-  let out, glass, shop, street, radioIn, noiseBuf, rainG, ambG;
+  let out, glass, shop, street, radioIn, synthIn, noiseBuf, rainG, ambG;
   let musicG, fxShopG, fxStreetG; // the viewer's volume controls
   let tvIn, tvLp, tvG; // the telly upstairs: faint through the window, clear when you're watching
   let tvOpen = false;
@@ -74,6 +74,11 @@
     radioIn = ctx.createGain();
     radioIn.gain.value = 0.9;
     radioIn.connect(hp);
+    // the built-in stations' own little synth bands came out ~12x quieter than a live stream through the same set, so
+    // after a stream they seemed silent (SCH-29): they get their own make-up gain into the radio
+    synthIn = ctx.createGain();
+    synthIn.gain.value = 7;
+    synthIn.connect(radioIn);
     hp.connect(lp);
     lp.connect(musicG);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -297,7 +302,7 @@
     const prog = st.prog || [0, 3, 4, 0];
     const ch = prog[bar % prog.length];
     const swing = k % 2 === 1 ? spb * (st.swing || 0) : 0;
-    const o = { bus: radioIn, at: t + swing - ctx.currentTime };
+    const o = { bus: synthIn, at: t + swing - ctx.currentTime };
     const drums = {
       kick: (v = 0.1) => {
         tone(170, 0.14, { ...o, vol: v, slide: 55 });
@@ -418,7 +423,7 @@
     if (i % 16 >= 12) return; // pauses between phrases
     if (Math.random() < 0.75) {
       const base = (st.voice || 150) * (1 + (Math.random() - 0.5) * 0.3);
-      tone(base, spb * 0.7, { bus: radioIn, at: t - ctx.currentTime, type: 'sawtooth', vol: 0.028, slide: base * B.pick([0.85, 1.1, 0.95]) });
+      tone(base, spb * 0.7, { bus: synthIn, at: t - ctx.currentTime, type: 'sawtooth', vol: 0.028, slide: base * B.pick([0.85, 1.1, 0.95]) });
     }
   }
 
@@ -500,7 +505,7 @@
   A.define = (name, fn) => {
     // shop = sounds heard through the shop glass (muffled), street = out on the pavement.
     // tone/noise accept { at, vol, a, r, pan (-1..1), panTo, lp, bus, ... }.
-    SFX[name] = (...args) => fn({ tone, noise, shop, street, tv: tvIn, bus: { shop: () => shop, street: () => street, tv: () => tvIn } }, ...args);
+    SFX[name] = (...args) => fn({ tone, noise, shop, street, music: musicG, tv: tvIn, bus: { shop: () => shop, street: () => street, music: () => musicG, tv: () => tvIn } }, ...args);
   };
   A.on = () => !!(A.enabled && ctx && ctx.state === 'running');
   A.radio = (st) => {

@@ -102,11 +102,12 @@
   };
   const BUDDY = { harmony: HARMONY, chordX: null, melody: MELODY, end: C, title: 'a little tune of her own' };
   const TUNES = { buddy: BUDDY, stjames: STJ };
-  B.audio.define('uke-tune', ({ tone, shop }, reps = 2, which = 'buddy') => {
+  B.audio.define('uke-tune', ({ tone, music, shop }, reps = 2, which = 'buddy') => {
     const T = TUNES[which] || BUDDY;
+    // live music, so it follows the music slider (not effects), and loud enough to carry like the radio (SCH-29)
     const pluck = (f, at, vol, dur = 0.5) => {
-      tone(f, dur, { type: 'triangle', vol, at, a: 0.004, lp: 3200, bus: shop });
-      tone(f * 2, dur * 0.4, { type: 'sine', vol: vol * 0.3, at, a: 0.002, lp: 4000, bus: shop }); // the bright nylon edge
+      tone(f, dur, { type: 'triangle', vol: vol * 8, at, a: 0.004, lp: 3200, bus: music || shop });
+      tone(f * 2, dur * 0.4, { type: 'sine', vol: vol * 2.4, at, a: 0.002, lp: 4000, bus: music || shop }); // the bright nylon edge
     };
     for (let r = 0; r < reps; r++) {
       const t0 = r * 32 * BEAT;
