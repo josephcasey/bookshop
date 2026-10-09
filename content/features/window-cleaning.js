@@ -85,12 +85,19 @@
   // ---------- the cleaner, by hand ----------
   B.audio.define('spritz', ({ noise, street }, x = 160) => noise(0.12, { ftype: 'highpass', freq: 4000, q: 0.6, vol: 0.02, a: 0.005, pan: clamp(x / 160 - 1, -0.9, 0.9), bus: street }));
   B.audio.define('stilts', ({ tone, street }, x = 160, up = true) => tone(up ? 260 : 340, 0.3, { type: 'square', vol: 0.004, slide: up ? 340 : 260, lp: 900, pan: clamp(x / 160 - 1, -0.9, 0.9), bus: street }));
-  // the squeegee: a rubbery drag for the length of each stroke (pitch rising with its speed), a squeak at the turn
+  // the squeegee: rubber dragged over wet glass judders (stick-slip), so a stroke is a fast chatter of tiny squeaks,
+  // rising in pitch and rate with its speed, over a soft wet swish, and a clear squeak as the blade turns at the end
   B.audio.define('squeegee', ({ noise, tone, street }, x = 160, dur = 0.4, speed = 1) => {
     const pan = clamp(x / 160 - 1, -0.9, 0.9);
-    noise(dur, { ftype: 'bandpass', freq: 900 + 500 * speed, q: 6, vol: 0.016, a: 0.03, r: 0.06, pan, bus: street });
-    tone(620 + 180 * speed, dur, { type: 'sawtooth', vol: 0.0035, slide: 760 + 220 * speed, lp: 1800, a: 0.03, pan, bus: street });
-    tone(1700 + Math.random() * 500, 0.06, { type: 'triangle', vol: 0.007, slide: 2300, at: dur - 0.02, pan, bus: street });
+    const rate = 38 + 22 * speed; // judders a second
+    const n = Math.max(3, Math.floor(dur * rate));
+    for (let i = 0; i < n; i++) {
+      const k = i / n;
+      const f = (780 + 260 * speed) * (1 + 0.18 * k) * (1 + (Math.random() - 0.5) * 0.08);
+      tone(f, 0.022, { type: 'triangle', vol: 0.075 * (0.6 + 0.4 * Math.sin(Math.PI * k)), at: i / rate, a: 0.002, lp: 3200, pan, bus: street });
+    }
+    noise(dur, { ftype: 'bandpass', freq: 2200, q: 0.9, vol: 0.033, a: 0.04, r: 0.08, pan, bus: street }); // the wet swish
+    tone(1900 + Math.random() * 400, 0.09, { type: 'triangle', vol: 0.04, slide: 2600, at: dur - 0.03, pan, bus: street }); // the turn
   });
   const mist = [];
   B.visitor({
