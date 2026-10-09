@@ -991,7 +991,7 @@
   const looks = new WeakMap();
   const dark = (col, k) => (col ? B.mix(B.shade(col, 0.8), '#181a24', k) : col);
   function styleLook(L) {
-    if (B.theme !== 'cyber' || !L) return L;
+    if (B.theme !== 'cyber' || !L || L.keep) return L; // (keep: a look already designed for the neon city)
     let c = looks.get(L);
     if (c) return c;
     if (L === B.looks.owner) {

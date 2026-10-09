@@ -21,7 +21,7 @@
     tone(1700, 0.04, { type: 'triangle', vol: 0.014, at: 0.06, slide: 1200, bus: shop });
   });
 
-  B.look('cyber-drone', { skin: '#c4c8cc', hair: '#c4c8cc', hairStyle: 'bald', top: '#1e2024', top2: '#3a3e46', bottom: '#16181c', shoes: '#0e0f12', h: 1 });
+  B.look('cyber-drone', { skin: '#c4c8cc', hair: '#c4c8cc', hairStyle: 'bald', top: '#1e2024', top2: '#3a3e46', bottom: '#16181c', shoes: '#0e0f12', h: 1, keep: true }); // (keep: not restyled by the neon theme)
 
   // ---------- the visit ----------
   const quiet = (s) => s.owner.area === 'inside' && !s.owner.hidden && s.owner.depth !== 'passage' && s.customersInside() === 0 && !s.npcs.some((n) => n.kind === 'drone-visitor');
