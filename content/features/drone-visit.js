@@ -108,20 +108,44 @@
       }
       o.hidden = true;
       B.log(`${name()} and her visitor dissolve into sparkles. The shop is very quiet.`);
-      yield 10; // back after ten seconds, so the whole thing can be watched
+      // she comes back ten seconds later whatever else happens (a tick hook below brings her back, so nothing that
+      // interrupts this activity can leave her away for good); meanwhile she's busy being elsewhere
+      s.abduction = { back: s.simT + 10 };
+      while (s.abduction) yield 0.2;
+    },
+  });
+  B.on('tick', (s) => {
+    const a = s.abduction;
+    const o = s.owner;
+    if (!a) return;
+    if (!a.returning && s.simT >= a.back) {
       // back again, alone
+      a.returning = s.simT;
       o.hidden = false;
+      o.area = 'inside';
+      o.alpha = 0;
       B.audio.play('shimmer', true);
-      for (let k = 0; k <= 12; k++) {
-        o.alpha = k / 12;
-        sparkle(s, o.x, B.headTop(o), o.y, 6);
-        yield 0.1;
-      }
-      o.alpha = 1;
       B.log(`${name()} shimmers back into the shop, alone, blinking, gadgets still clamped to her face.`);
-      o.emote('what', 1.6);
-      yield 1.5;
-      // off they come, one by one
+    }
+    if (a.returning) {
+      o.alpha = Math.min(1, (s.simT - a.returning) / 1.2);
+      if (Math.random() < 0.6) sparkle(s, o.x, B.headTop(o), o.y, 2);
+      if (o.alpha >= 1) {
+        s.abduction = null;
+        o.emote('what', 1.6);
+        s.request('remove-implants', 8);
+      }
+    }
+  });
+  // off they come, one by one, and into the drawer (also picked up by itself if anything got in the way)
+  B.activity({
+    id: 'remove-implants',
+    priority: 8,
+    resume: false,
+    weight: (s, o) => (o.implants > 0 && !o.hidden ? 50 : 0),
+    when: (s, o) => o.implants > 0 && !o.hidden && !s.abduction && o.area === 'inside',
+    *run(s, o) {
+      yield 1.2;
       const bits = ['the eyepiece', 'the cheek plate', 'the neck tube'];
       while (o.implants > 0) {
         o.face(0);
