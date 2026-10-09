@@ -200,6 +200,7 @@
     const o = s.owner;
     Object.assign(o, { area: 'inside', depth: 'back', hidden: false, alpha: 1, onStage: false, implants: 0 });
     s.dayStats.droneVisits = 0;
+    s.droneBeam = false;
     s.dayStats.gadgetVisits = 0;
     const run = h.run(s);
     run.next(); // (both spawn their visitors straight away)
