@@ -412,4 +412,16 @@
         });
     });
   }
+
+  // The complete user-facing package: current gameplay versus hybrid-v1 across representative weather and time.
+  if (B.params && B.params.has('hybrid-comparison')) {
+    B.on('ready', () => {
+      import('../tools/lighting-reel/hybrid-gameplay-comparison.js')
+        .then((m) => m.run())
+        .catch((error) => {
+          console.error('[bookshop] hybrid gameplay comparison', error);
+          window.__hybridGameplayComparison = { done: true, error: String(error && error.stack ? error.stack : error) };
+        });
+    });
+  }
 })();

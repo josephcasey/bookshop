@@ -851,6 +851,11 @@
         gain: Math.min(1.5, 2.3 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain); lifted ~30% so the blade holds against the glass
         motes: true,
       };
+      if (B.hybridLighting && B.hybridLighting.enabled) {
+        // Keep the hand-shaped sun patch as readable fill, but leave room for the receiver overlay's depth breaks.
+        src.a *= 0.72;
+        src.gain *= 0.72;
+      }
       const room = Object.assign({}, kit.SHOP, { aperture: () => strips });
       kit.project(qg, s, src, room, ag);
       const flat = Object.assign({}, kit.FLAT, {

@@ -149,6 +149,20 @@
     $('#volBtn').addEventListener('click', () => volpanel.classList.toggle('hidden'));
     volpanel.querySelector('.close').addEventListener('click', () => volpanel.classList.add('hidden'));
 
+    // ----- playable lighting experiment -----
+    const lightingBtn = $('#lightingBtn');
+    const syncLighting = () => {
+      const on = !!(B.hybridLighting && B.hybridLighting.enabled);
+      lightingBtn.textContent = on ? 'Hybrid light' : 'Current light';
+      lightingBtn.classList.toggle('on', on);
+    };
+    lightingBtn.addEventListener('click', () => {
+      if (B.hybridLighting) B.hybridLighting.setEnabled(!B.hybridLighting.enabled);
+      syncLighting();
+    });
+    B.on('lighting-mode', syncLighting);
+    syncLighting();
+
     $('#diaryBtn').addEventListener('click', () => {
       $('#diary').classList.toggle('hidden');
       renderLog();

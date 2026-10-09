@@ -4,7 +4,8 @@
  * and exterior ambience, while the existing point lamps reveal the interior's stored albedo through smaller, warmer
  * pools with much less uniform bounce. The lamp geometry and its prop/person shadows remain the source of the look.
  *
- * Enable with ?direction=contrast-v1 or B.lightingDirection.setEnabled(true).
+ * Enable with ?direction=contrast-v1 or B.lightingDirection.setEnabled(true). The playable hybrid-v1 mode enables
+ * it automatically and restores the previous state when switched off.
  */
 (function (B) {
   'use strict';
@@ -42,7 +43,14 @@
         exteriorCool: '#7382b7',
         exteriorCoolLift: clamp(overcast * 0.018 + dusk * 0.012, 0, 0.07),
         // Shop light reduces outside sources, but does not erase the cool/warm dialogue at the glass.
-        externalTransmission: overcast > 0.45 ? 0.42 : 0.36,
+        externalTransmission:
+          B.hybridLighting && B.hybridLighting.enabled
+            ? overcast > 0.45
+              ? 0.36
+              : 0.3
+            : overcast > 0.45
+              ? 0.42
+              : 0.36,
       };
     },
     beforeLamps(g, s) {
@@ -86,4 +94,32 @@
   });
 
   mode.setEnabled(B.params && B.params.get('direction') === 'contrast-v1');
+
+  const hybrid = (B.hybridLighting = {
+    enabled: false,
+    saved: null,
+    setEnabled(on) {
+      on = !!on;
+      if (on === this.enabled) return;
+      if (on) {
+        this.saved = {
+          direction: mode.enabled,
+          relight: B.relightV2 ? B.relightV2.variant : 'off',
+          exposure: B.lightFlags.exposure,
+        };
+        if (B.relightV2 && B.relightV2.setMode) B.relightV2.setMode('hybrid');
+        mode.setEnabled(true);
+        B.lightFlags.exposure = true;
+      } else {
+        if (B.relightV2 && B.relightV2.variant === 'hybrid') B.relightV2.setMode(this.saved ? this.saved.relight : 'off');
+        mode.setEnabled(this.saved ? this.saved.direction : false);
+        if (this.saved) B.lightFlags.exposure = this.saved.exposure;
+        this.saved = null;
+      }
+      this.enabled = on;
+      if (B.world) B.emit('lighting-mode', B.world, on ? 'hybrid-v1' : 'current');
+    },
+  });
+
+  hybrid.setEnabled(B.params && B.params.get('lighting') === 'hybrid-v1');
 })(window.Bookshop);

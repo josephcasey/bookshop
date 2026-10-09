@@ -27,7 +27,8 @@
       on = !!on;
       if (on === this.enabled) return;
       if (on) {
-        if (B.relightV2 && B.relightV2.enabled) B.relightV2.setEnabled(false);
+        if (B.hybridLighting && B.hybridLighting.enabled) B.hybridLighting.setEnabled(false);
+        else if (B.relightV2 && B.relightV2.enabled) B.relightV2.setEnabled(false);
         this.saved = { projection: F.projection, sunInterior: F.sunInterior };
         F.projection = false;
         F.sunInterior = false;

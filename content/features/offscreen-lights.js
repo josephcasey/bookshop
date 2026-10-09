@@ -1129,7 +1129,10 @@
       headlights = Math.max(headlights, a);
       list.push({ x: lx, y: L.lamps[0].y, D: L.D, col: L.col, edge: L.edge, a, aim: L.aim != null ? L.aim : lx + 80 * ev.dir, pair: ev.kind === 'turn' ? 'across' : L.depthPair ? 'depth' : null, dir: ev.dir, lift: L.lift || 0, kick: L.kick || 0, cutY: L.main ? null : L.cutY || 150, main: L.main });
     }
-    exposureTarget = 1 - 0.4 * Math.min(1, headlights);
+    // Hybrid already adds a geometric key over the cinematic projection, so its exposure response should frame the
+    // event without making the rest of the composition collapse into black.
+    const exposureDepth = B.hybridLighting && B.hybridLighting.enabled ? 0.25 : 0.4;
+    exposureTarget = 1 - exposureDepth * Math.min(1, headlights);
     list.sort((a, b) => b.a - a.a);
     return list.slice(0, 3);
   }

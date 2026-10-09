@@ -97,3 +97,18 @@ http://localhost:8123/?cyber-solvers-comparison&date=2026-06-21
 This writes `SCH-30-cyber-solvers.png` and `SCH-30-cyber-solvers-interior.png`, with current projection, receiver
 buffer and low-resolution orthographic 2.5D in three columns. The ortho pass is low-resolution lighting only; all
 three columns render the same full-resolution 320×180 Cyber artwork and simulation.
+
+### Playable hybrid comparison
+
+To compare current gameplay with the recommended complete hybrid package, open:
+
+```text
+http://localhost:8123/?hybrid-comparison&date=2026-06-21
+```
+
+This writes `SCH-30-hybrid-gameplay.png` and `SCH-30-hybrid-gameplay-interior.png`. Six rows cover overcast,
+rain, clear afternoon sun, golden hour and two headlight scenes. The two columns keep the same Cyber artwork,
+characters, practical-lamp choices and seeded simulation; only the playable hybrid is switched.
+
+For normal interactive play, use `?lighting=hybrid-v1` or click **Current light** in the HUD. The button reads
+**Hybrid light** while the experiment is active.

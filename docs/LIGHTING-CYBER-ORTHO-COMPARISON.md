@@ -38,11 +38,13 @@ the stills do not currently justify its content cost.
 
 ## Recommendation
 
-Do not rebuild the whole scene into orthographic 3D yet. The best next experiment is a hybrid Cyber renderer:
+Do not rebuild the whole scene into orthographic 3D yet. The implemented next experiment is a hybrid Cyber renderer:
 
 1. Keep a restrained version of the current broad cinematic fill for composition and face/shelf readability.
 2. Add low-resolution geometry-driven direct light only for sun and hero headlights.
 3. Use the 2.5D depth buffer as a performance reference or contact-shadow aid, not as the sole lighting model.
+
+The playable version is documented in `docs/LIGHTING-HYBRID-GAMEPLAY.md`.
 
 ## Review artifacts
 
