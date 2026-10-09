@@ -339,7 +339,8 @@
       const door = x >= D.x && x < D.x + D.w && y >= D.y && y < D.y + D.h;
       if (onSign(x, y)) showBuild(e, 0);
       else hideBuild();
-      canvas.style.cursor = onRadio(x, y) || onTv(x, y) || door ? 'pointer' : '';
+      const other = (B.clickables || []).some((f) => f(x, y)); // things content files make clickable (the message board)
+      canvas.style.cursor = onRadio(x, y) || onTv(x, y) || door || other ? 'pointer' : '';
     });
 
     // ----- the telly: click the left upstairs window -----
