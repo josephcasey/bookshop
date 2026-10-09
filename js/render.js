@@ -223,26 +223,19 @@
     return c;
   }
 
-  // ---------- themes ----------
-  // Every scene piece is looked up through part(name), so a theme (js/cyber.js) can replace any of them.
-  // 'classic' is the original cosy high street; 'cyber' is the neon future.
-  try {
-    B.theme = localStorage.getItem('bookshop.theme') || 'cyber';
-  } catch (e) {
-    B.theme = 'cyber';
-  }
+  // ---------- theme ----------
+  // Cyber is now the single playable art direction. Keep the classic parts registered below as dormant source art
+  // so the decision is easy to reverse, but ignore old saved preferences and developer attempts to select it.
+  B.theme = 'cyber';
   B.themes = { classic: {} };
   const part = (name) => (B.themes[B.theme] && B.themes[B.theme][name]) || PARTS[name];
   B.setTheme = function (name) {
-    if (!B.themes[name]) return;
-    B.theme = name;
-    try {
-      localStorage.setItem('bookshop.theme', name);
-    } catch (e) {
-      /* ignore */
-    }
+    if (name !== 'cyber' || !B.themes.cyber) return false;
+    if (B.theme === 'cyber') return true;
+    B.theme = 'cyber';
     B.buildCaches();
-    if (B.world) B.emit('theme', B.world, name);
+    if (B.world) B.emit('theme', B.world, 'cyber');
+    return true;
   };
 
   B.part = part; // the current theme's version of a scene piece (used to cast props' shadows)

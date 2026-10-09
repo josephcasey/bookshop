@@ -1,44 +1,42 @@
-# Lighting replacement comparison (SCH-30)
+# Cyber receiver-buffer comparison (SCH-30)
 
 ## Candidate 1: receiver buffer
 
-This prototype keeps the authored pixel-art scene and light sources, but replaces the existing window projection and
-interior sun patch with a single per-pixel visibility solve. For every visible interior pixel it traces the path back
-through the window, testing glazing bars, props and people at their authored depths. Sun, vehicle beams and broad
-opposite-shop sources use the same visibility path.
+Cyber is now the only playable theme and the only theme used by this harness. The classic artwork remains dormant in
+the source tree for rollback, but old saved preferences, UI controls and comparison loops can no longer select it.
 
-The prototype is intentionally narrow: facade lighting, glass reflections and the shop's own lamps still use the
-production renderer. It is a still-first visual test, not yet a real-time performance recommendation.
+The receiver-buffer prototype keeps the authored Cyber scene and light sources, but replaces the existing window
+projection and interior sun patch with one per-pixel visibility solve. Every visible interior pixel traces back
+through the glazing and tests props and people at their authored depths. Sun, vehicle beams and broad opposite-shop
+sources therefore share one visibility rule.
 
-## What the comparison shows
+The prototype is intentionally narrow: facade lighting, glass reflections and the shop's practical lamps still use
+the production renderer. It is a still-first visual test, not a production performance recommendation.
 
-| Scenario (classic interior crop) | Pixels materially changed | Reading |
+## What the Cyber comparison shows
+
+| Scenario | Interior pixels materially changed | Reading |
 |---|---:|---|
 | Clear morning | 0.00% | Control: no unintended change when no source enters the window. |
-| Cloudy noon | 0.00% | Control: diffuse daytime look is preserved. |
-| Afternoon sun, 22° | 18.77% | Sun separates shelves, counter, people and glazing by depth. |
-| Angled sun, 12° | 4.73% | Narrower low-angle patch remains restrained. |
-| Blue hour + main beam | 59.87% | Strongest demonstration of prop/person occlusion and depth. |
-| Night rain + main beam | 52.90% | Same geometry survives the wet-night grade without flattening the room. |
-| Fog + dipped beam | 7.68% | Fog transmission keeps the interior response quiet rather than washing it out. |
+| Cloudy noon | 0.00% | Diffuse daylight is effectively unchanged. |
+| Afternoon sun, 22° | 5.84% | Sun gains small, coherent depth breaks across people and shelves. |
+| Angled sun, 12° | 0.93% | The low-angle patch stays restrained. |
+| Blue hour + main beam | 43.37% | Strongest depth and occlusion demonstration. |
+| Night rain + main beam | 36.80% | Geometry remains visible under the wet cyan/magenta grade. |
+| Fog + dipped beam | 7.62% | Fog transmission keeps the interior response quiet. |
 
-The three strongest cyber checks changed 5.51% (afternoon), 43.42% (blue hour) and 36.12% (night rain) of the
-interior crop. The neon sign and exterior grade remain dominant; the alternate only reorganises light inside the
-window.
-
-The receiver buffer is a credible alternate because it produces geometry-driven differences rather than a new set of
-painted masks. Its best result is direct-source depth: silhouettes, shelves and the counter interrupt illumination in
-one consistent system. The trade-off is a harder, more segmented beam than the production compositor's soft cinematic
-pool, plus a substantially more expensive CPU path. A later real-time version would need caching, lower resolution or
-GPU execution.
+The receiver buffer is credible for direct-source depth, but it removes some of the production projection's broad,
+soft fill. The result is physically stricter and often makes silhouettes and shelf breaks clearer, yet can become too
+dark or segmented for the intended cinematic pixel-art composition. This supports a hybrid rather than a wholesale
+replacement: keep restrained authored fill for readability, and use cached/lower-resolution visibility for hero sun
+and headlight moments.
 
 ## Review artifacts
 
 Run the deterministic capture documented in `tools/lighting-reel/README.md`. It writes:
 
-- `tools/lighting-reel/out/SCH-30-relight-v2-comparison.png` — seven full-frame classic comparisons.
-- `tools/lighting-reel/out/SCH-30-relight-v2-interior.png` — enlarged interior crops.
-- `tools/lighting-reel/out/SCH-30-relight-v2-cyber.png` — the three strongest cyber checks.
+- `tools/lighting-reel/out/SCH-30-relight-v2-cyber-comparison.png` — seven full-frame Cyber comparisons.
+- `tools/lighting-reel/out/SCH-30-relight-v2-cyber-interior.png` — enlarged interior crops.
 
-Every row is current on the left and receiver buffer on the right. The output directory remains ignored because these
-are regenerated review artifacts, not production assets.
+Every row is the current Cyber solver on the left and the receiver buffer on the right. The output directory remains
+ignored because these are regenerated review artifacts, not production assets.

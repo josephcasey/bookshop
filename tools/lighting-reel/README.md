@@ -4,7 +4,7 @@ A deterministic set of contact sheets showing the off-screen lighting (`content/
 
 | Sheet | Contents |
 |---|---|
-| A | A dipped-beam turning car, 4 moments, in both themes. |
+| A | A dipped-beam turning car, 4 moments, in Cyber. |
 | B | Passing car, bus, bike and emergency vehicle. |
 | C | Steady lights only, rain, fog, daytime and dusk. |
 | D | Window close-ups of a main-beam turn. |
@@ -49,7 +49,7 @@ These are the agreed keepers from the review. A failing check that touches them 
 - **Steady and emergency light:**
   - The warm/blue emergency double flash, never dimmer than 0.45.
   - The pub print's warm floor.
-- **Neon theme:**
+- **Cyber theme:**
   - The leading-arc magenta rim.
   - Neon is never dimmed by other light.
 - **Outside:**
@@ -69,9 +69,9 @@ For deterministic review stills, run the dev server and sink, then open:
 http://localhost:8123/?relight-comparison&date=2026-06-21
 ```
 
-The page writes three current-versus-alternate sheets to `tools/lighting-reel/out/`: a seven-scenario classic sheet,
-an enlarged interior crop, and a three-scenario cyber-theme check. The harness creates a fresh world, freezes its
-clock and seeds randomness, so reruns are directly comparable.
+The page writes two current-versus-alternate Cyber sheets to `tools/lighting-reel/out/`: seven full scenes and an
+enlarged interior crop. The harness creates a fresh world, freezes its clock and seeds randomness, so reruns are
+directly comparable.
 
 ### Art-direction contrast comparison
 
@@ -81,8 +81,19 @@ To compare lighting taste separately from lighting geometry, open:
 http://localhost:8123/?contrast-comparison&date=2026-06-21
 ```
 
-This writes `SCH-30-contrast-classic.png`, `SCH-30-contrast-interior.png` and `SCH-30-contrast-cyber.png`. Each row
-uses the same scene and presents three columns: production lighting; the production solver with cooler weather
-ambience and warmer, more directional practical lights; and the receiver-buffer solver with that identical art
-direction. The report embedded in the page records the visual delta, warm/cool separation and highlight-to-shadow
-span for each treatment.
+This writes `SCH-30-contrast-cyber.png` and `SCH-30-contrast-cyber-interior.png`. Each row uses the same Cyber scene
+and presents three columns: production lighting; the production solver with cooler weather ambience and warmer, more
+directional practical lights; and the receiver-buffer solver with that identical art direction. The embedded report
+records visual delta, practical-to-recess contrast, warm/cool separation and highlight-to-shadow span.
+
+### Cyber solver comparison
+
+To compare the current projection with both replacement candidates under one fixed Cyber art direction, open:
+
+```text
+http://localhost:8123/?cyber-solvers-comparison&date=2026-06-21
+```
+
+This writes `SCH-30-cyber-solvers.png` and `SCH-30-cyber-solvers-interior.png`, with current projection, receiver
+buffer and low-resolution orthographic 2.5D in three columns. The ortho pass is low-resolution lighting only; all
+three columns render the same full-resolution 320×180 Cyber artwork and simulation.

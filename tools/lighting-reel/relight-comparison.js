@@ -63,7 +63,6 @@ export async function run() {
   const g = screen.getContext('2d');
   const full = sheet(7, [0, 0, 320, 180], 2);
   const close = sheet(7, [5, 72, 212, 94], 3);
-  const cyber = sheet(3, [0, 0, 320, 180], 2);
   const report = [];
 
   let seed = 1;
@@ -146,7 +145,7 @@ export async function run() {
       await sleep(30);
     };
 
-    B.setTheme('classic');
+    B.setTheme('cyber');
     for (let row = 0; row < scenarios.length; row++) {
       const sc = scenarios[row];
       await setScene(sc);
@@ -154,29 +153,14 @@ export async function run() {
       const alternate = render(true, 7000 + row);
       const metric = changedPct(baseline, alternate, [5, 72, 212, 94]);
       const stats = B._relightV2Debug ? B._relightV2Debug().stats : null;
-      report.push({ theme: 'classic', id: sc.id, label: sc.label, ...metric, stats });
-      full.put(row, 0, baseline, `${sc.label} | CURRENT`);
-      full.put(row, 1, alternate, `${sc.label} | RECEIVER BUFFER`);
-      close.put(row, 0, baseline, `${sc.label} | CURRENT`);
-      close.put(row, 1, alternate, `${sc.label} | RECEIVER BUFFER`);
-    }
-    await save('SCH-30-relight-v2-comparison', full.c);
-    await save('SCH-30-relight-v2-interior', close.c);
-
-    B.setTheme('cyber');
-    const cyberScenarios = [scenarios[2], scenarios[4], scenarios[5]];
-    for (let row = 0; row < cyberScenarios.length; row++) {
-      const sc = cyberScenarios[row];
-      await setScene(sc);
-      const baseline = render(false, 9000 + row);
-      const alternate = render(true, 9000 + row);
-      const metric = changedPct(baseline, alternate, [5, 72, 212, 94]);
-      const stats = B._relightV2Debug ? B._relightV2Debug().stats : null;
       report.push({ theme: 'cyber', id: sc.id, label: sc.label, ...metric, stats });
-      cyber.put(row, 0, baseline, `${sc.label} | CURRENT CYBER`);
-      cyber.put(row, 1, alternate, `${sc.label} | RECEIVER BUFFER CYBER`);
+      full.put(row, 0, baseline, `${sc.label} | CURRENT CYBER`);
+      full.put(row, 1, alternate, `${sc.label} | RECEIVER BUFFER CYBER`);
+      close.put(row, 0, baseline, `${sc.label} | CURRENT CYBER`);
+      close.put(row, 1, alternate, `${sc.label} | RECEIVER BUFFER CYBER`);
     }
-    await save('SCH-30-relight-v2-cyber', cyber.c);
+    await save('SCH-30-relight-v2-cyber-comparison', full.c);
+    await save('SCH-30-relight-v2-cyber-interior', close.c);
     window.__relightComparison = { done: true, report };
     const pre = document.createElement('pre');
     pre.id = 'relightComparisonReport';

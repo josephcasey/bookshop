@@ -69,28 +69,23 @@
   function buildPalette() {
     if (building) return;
     building = true;
-    // gather the colours the scene is made of, across day and night and both themes, and keep the 64 most used
+    // Gather the colours the cyber scene is made of across day and night, and keep the 64 most used
     // (spread out so near-duplicates don't crowd out accents)
     const s = B.world;
     const counts = new Map();
     const scr = $('#screen');
     const g = scr.getContext('2d');
-    const theme0 = B.theme;
     const h0 = s.time;
     B.holdFrame = true;
-    for (const theme of ['classic', 'cyber']) {
-      B.setTheme(theme);
-      for (const hr of [10, 17.5, 19.6, 22]) {
-        B.jumpTo(s, hr);
-        B.render(g, s);
-        const d = g.getImageData(0, 0, W, H).data;
-        for (let i = 0; i < d.length; i += 8) {
-          const k = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
-          counts.set(k, (counts.get(k) || 0) + 1);
-        }
+    for (const hr of [10, 17.5, 19.6, 22]) {
+      B.jumpTo(s, hr);
+      B.render(g, s);
+      const d = g.getImageData(0, 0, W, H).data;
+      for (let i = 0; i < d.length; i += 8) {
+        const k = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
+        counts.set(k, (counts.get(k) || 0) + 1);
       }
     }
-    B.setTheme(theme0);
     s.time = h0;
     B.settle(s);
     B.holdFrame = false;
@@ -402,6 +397,18 @@
         .catch((error) => {
           console.error('[bookshop] contrast comparison', error);
           window.__contrastComparison = { done: true, error: String(error && error.stack ? error.stack : error) };
+        });
+    });
+  }
+
+  // Cyber-only comparison of the production projection, per-pixel receiver buffer and orthographic 2.5D G-buffer.
+  if (B.params && B.params.has('cyber-solvers-comparison')) {
+    B.on('ready', () => {
+      import('../tools/lighting-reel/cyber-solvers-comparison.js')
+        .then((m) => m.run())
+        .catch((error) => {
+          console.error('[bookshop] cyber solver comparison', error);
+          window.__cyberSolversComparison = { done: true, error: String(error && error.stack ? error.stack : error) };
         });
     });
   }

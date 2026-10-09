@@ -15,6 +15,7 @@
   const F = (B.lightFlags = B.lightFlags || {});
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const WN = () => B.LAYOUT.win;
+  const clock = performance.now.bind(performance);
 
   const mode = {
     enabled: false,
@@ -23,6 +24,7 @@
       on = !!on;
       if (on === this.enabled) return;
       if (on) {
+        if (B.relightOrtho && B.relightOrtho.enabled) B.relightOrtho.setEnabled(false);
         this.saved = { projection: F.projection, sunInterior: F.sunInterior };
         F.projection = false;
         F.sunInterior = false;
@@ -156,6 +158,7 @@
   function solve(g, s) {
     const kit = B.lightKit;
     if (!ensure() || !kit || !kit.SHOP || !kit.reveal) return;
+    const started = clock();
     const sources = [];
     const sun = sunSource(s);
     if (sun) sources.push(sun);
@@ -171,7 +174,10 @@
         if (source.a > 0.008) sources.push(source);
       }
     }
-    if (!sources.length) return;
+    if (!sources.length) {
+      lastStats = { sources: 0, receivers: 0, litPixels: 0, rays: 0, solveMs: clock() - started };
+      return;
+    }
 
     const props = kit.SHOP.masks(s).map((m) => ({ z: m.z, data: m.g.getImageData(0, 0, W, H).data }));
     const actors = actorMasks(s);
@@ -234,7 +240,7 @@
     lg.putImageData(img, 0, 0);
     if (F.bands !== false && kit.quantise) kit.quantise(lg, 3, 0.96, true, WN());
     kit.reveal(g, light, 'in', 0.055, 0.98, g, false, null, WN());
-    lastStats = { sources: sources.length, receivers: receivers.length, litPixels, rays };
+    lastStats = { sources: sources.length, receivers: receivers.length, litPixels, rays, solveMs: clock() - started };
   }
 
   B.decor({ id: 'relight-v2', layer: 'overlay', when: () => mode.enabled, draw: solve });

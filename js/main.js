@@ -149,18 +149,6 @@
     $('#volBtn').addEventListener('click', () => volpanel.classList.toggle('hidden'));
     volpanel.querySelector('.close').addEventListener('click', () => volpanel.classList.add('hidden'));
 
-    // ----- look: neon future or classic high street -----
-    const styleBtn = $('#styleBtn');
-    const syncStyle = () => {
-      styleBtn.textContent = B.theme === 'cyber' ? 'Neon' : 'Classic';
-      styleBtn.classList.toggle('on', B.theme === 'cyber');
-    };
-    styleBtn.addEventListener('click', () => {
-      B.setTheme(B.theme === 'cyber' ? 'classic' : 'cyber');
-      syncStyle();
-    });
-    syncStyle();
-
     $('#diaryBtn').addEventListener('click', () => {
       $('#diary').classList.toggle('hidden');
       renderLog();

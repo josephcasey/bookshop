@@ -3,7 +3,7 @@
  * get/putImageData and the composite ops the sprites use (source-over/in/atop, destination-in/out, lighter, multiply).
  * Gradients, arcs and text are skipped, so the soft lighting is missing, but every sprite and prop is drawn exactly.
  *
- *   node tools/headless/still.js [--theme classic|cyber|both] [--hour 11] [--fire <happening or visitor id>]
+ *   node tools/headless/still.js [--theme cyber] [--hour 11] [--fire <happening or visitor id>]
  *                                [--seconds 60] [--every 5] [--follow <npc kind>] [--crop x,y,w,h] [--scale 4] [--out dir]
  *
  * Jumps to --hour, optionally fires a happening/visitor, then saves a frame every --every seconds for --seconds.
@@ -94,7 +94,7 @@ const load = (f) => vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'),
 const B = sandbox.Bookshop; B.manifest.forEach((f) => load('content/' + f)); B.buildCaches();
 const s = (B.world = B.createWorld()); B.loadGame(s); B.settle(s); B.emit('ready', s);
 const screen = new Canvas(); screen.width = B.W; screen.height = B.H; const g = screen.getContext();
-const themes = arg('theme', 'both') === 'both' ? ['classic', 'cyber'] : [arg('theme')];
+const themes = ['cyber'];
 const fire = arg('fire'), follow = arg('follow'), secs = +arg('seconds', 60), every = +arg('every', 5), k = +arg('scale', 4);
 const crop = arg('crop') ? arg('crop').split(',').map(Number) : null;
 const shots = [];

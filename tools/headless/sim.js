@@ -1,4 +1,4 @@
-// Headless sim: runs every theme through the day and the weather and counts errors.  node tools/headless/sim.js
+// Headless sim: runs the Cyber theme through the day and the weather and counts errors.  node tools/headless/sim.js
 const vm = require('vm'), fs = require('fs'), path = require('path');
 const root = process.argv[2] || path.resolve(__dirname, '..', '..');
 const noop = () => {};
@@ -23,7 +23,7 @@ const s = B.world = B.createWorld();
 B.loadGame(s); B.settle(s); B.emit('ready', s);
 const out = (...a) => process.stdout.write(a.join(' ') + '\n');
 const run = (sec) => { for (let i = 0; i < sec * 30; i++) { B.tick(s, 1 / 30); if (i % 5 === 0) B.render(ctx2d, s); } };
-for (const theme of ['cyber', 'classic', 'cyber']) {
+for (const theme of ['cyber']) {
   B.setTheme(theme);
   for (const h of [3, 8.5, 11, 14, 17.5, 19.5, 22.4]) { B.jumpTo(s, h); run(20); }
   for (const w of ['rain', 'snow', 'fog', null]) { B.setWeatherKind(s, w); run(20); }

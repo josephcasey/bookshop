@@ -149,8 +149,8 @@ async function shoot(tag, emit, report) {
     await sleep(50);
   }
 
-  // A: the turning car's sweep, both themes
-  for (const theme of ['classic', 'cyber']) {
+  // A: the turning car's sweep in the single supported Cyber theme
+  for (const theme of ['cyber']) {
     await scene(theme, 21.8, { mabelInside: true });
     const sh = sheet(2, 2, 320, 180, 2);
     [0.15, 0.4, 0.6, 0.9].forEach((k, i) => {
@@ -166,8 +166,8 @@ async function shoot(tag, emit, report) {
     });
     await emit(`D-interior-${theme}`, sd.c);
   }
-  // B: passing car, bus, bike, emergency (classic) and the same in neon
-  for (const theme of ['classic', 'cyber']) {
+  // B: passing car, bus, bike and emergency in Cyber
+  for (const theme of ['cyber']) {
     await scene(theme, 22.3, { mabelInside: true });
     const sh = sheet(2, 2, 320, 180, 2);
     const cases = [
@@ -187,11 +187,11 @@ async function shoot(tag, emit, report) {
     const sh = sheet(2, 3, 320, 180, 2);
     let i = 0;
     for (const [theme, hour, weather, label] of [
-      ['classic', 22, 'clear', 'steady lights only (pub, chippy, lamp)'],
+      ['cyber', 22, 'clear', 'steady lights only (pub, chippy, lamp)'],
       ['cyber', 22, 'clear', 'steady lights only (sign, ramen, pylon)'],
-      ['classic', 22, 'rain', 'rain + turning car'],
+      ['cyber', 22, 'rain', 'rain + turning car'],
       ['cyber', 22, 'fog', 'fog + turning car'],
-      ['classic', 13, 'clear', 'daytime passing car (glint, shadow)'],
+      ['cyber', 13, 'clear', 'daytime passing car (glint, shadow)'],
       ['cyber', 20.6, 'clear', 'dusk, upstairs lit, turning car'],
     ]) {
       await scene(theme, hour, { weather, mabelInside: hour > 21 });
@@ -204,7 +204,7 @@ async function shoot(tag, emit, report) {
   }
   // E: motion filmstrips: a main-beam turn (12 frames) and an emergency vehicle's flash rhythm (8 frames, 60 ms apart)
   {
-    await scene('classic', 21.8, { mabelInside: true });
+    await scene('cyber', 21.8, { mabelInside: true });
     const sh = sheet(3, 4, 280, 110, 2);
     for (let i = 0; i < 12; i++) {
       const k = 0.12 + (i * 0.85) / 11;
@@ -221,7 +221,7 @@ async function shoot(tag, emit, report) {
   }
   // F: the hero shot: the cat in the window throwing its silhouette across the shelves under a main beam
   {
-    await scene('classic', 21.8, { mabelInside: true, people: false });
+    await scene('cyber', 21.8, { mabelInside: true, people: false });
     const sh = sheet(2, 2, 210, 76, 3);
     [[30, 0.3], [30, 0.4], [50, 0.45], [50, 0.55]].forEach(([cx, k], i) => {
       if (s.cat) Object.assign(s.cat, { surface: 'sill', x: cx, pose: 'sit', dir: 1 });
@@ -230,8 +230,8 @@ async function shoot(tag, emit, report) {
     });
     await emit('F-cat-hero', sh.c);
   }
-  // G: the sun through the day, both themes
-  for (const theme of ['classic', 'cyber']) {
+  // G: the sun through the Cyber day
+  for (const theme of ['cyber']) {
     const sh = sheet(3, 2, 320, 180, 2);
     let i = 0;
     const sunHours = [B.sunTime(14, false), B.sunPos(12).noon, B.sunTime(25, true), B.sunTime(12, true), B.sunTime(4, true), B.sunTime(-2.5, true)];
@@ -247,19 +247,19 @@ async function shoot(tag, emit, report) {
   // H: early evening: golden hour with traffic, dusk turn, a cloudy afternoon's drifting shadows
   {
     const sh = sheet(2, 2, 320, 180, 2);
-    await scene('classic', B.sunTime(5, true), {});
+    await scene('cyber', B.sunTime(5, true), {});
     setTraffic([{ kind: 'bus', dur: 4.2, t: 1.6, dir: 1 }]);
-    sh.put(0, frame(), 0, 0, 'classic golden hour (sun 5 deg), a bus passing');
-    await scene('classic', B.sunTime(-5, true), { mabelInside: true });
+    sh.put(0, frame(), 0, 0, 'cyber golden hour (sun 5 deg), a bus passing');
+    await scene('cyber', B.sunTime(-5, true), { mabelInside: true });
     setTraffic([{ kind: 'turn', dir: 1, jx: 70, dur: 4.65, t: 2.0, main: true }]);
-    sh.put(1, frame(), 0, 0, 'classic blue hour (sun -5 deg), main-beam turn');
+    sh.put(1, frame(), 0, 0, 'cyber blue hour (sun -5 deg), main-beam turn');
     await scene('cyber', B.sunTime(-2, true), {});
     setTraffic([{ kind: 'car', dur: 2.8, t: 1.0, dir: -1 }]);
     sh.put(2, frame(), 0, 0, 'cyber sunset glow (sun -2 deg), car passing');
-    await scene('classic', B.sunTime(22, true), {});
+    await scene('cyber', B.sunTime(22, true), {});
     s.weather.cloud = 0.62;
     setTraffic([]);
-    sh.put(3, frame(), 0, 0, 'classic afternoon, broken cloud: a cloud shadow sweeping across');
+    sh.put(3, frame(), 0, 0, 'cyber afternoon, broken cloud: a cloud shadow sweeping across');
     await emit('H-evening', sh.c);
   }
   // J: seasons and the reviewers' checks: Dec noon, Jun 20:00, windscreen flashes at 25 vs 10 deg, afterglow, sunrise vista
@@ -280,7 +280,7 @@ async function shoot(tag, emit, report) {
     let i = 0;
     for (const [date, hr, label, traffic, opt] of shots) {
       if (date) B.today = date;
-      await scene(opt === 'cyber' ? 'cyber' : 'classic', hr(), {});
+      await scene('cyber', hr(), {});
       s.weather.cloud = 0.15;
       setTraffic(traffic);
       if (opt === 'walker') {
@@ -289,7 +289,7 @@ async function shoot(tag, emit, report) {
         const p = s.npcs.find((n) => n.area === 'street' && !n.hidden);
         if (p) Object.assign(p, { x: Math.round(Math.max(20, Math.min(260, bx))) });
       }
-      sh.put(i++, frame(), 0, 0, `${opt === 'cyber' ? 'cyber' : 'classic'} ${label}`);
+      sh.put(i++, frame(), 0, 0, `cyber ${label}`);
       B.today = today0;
     }
     await emit('J-seasons-checks', sh.c);
@@ -312,13 +312,13 @@ async function shoot(tag, emit, report) {
     ];
     let i = 0;
     for (const [hr, label, traffic, xs] of shots) {
-      await scene('classic', hr(), { mabelInside: false });
+      await scene('cyber', hr(), { mabelInside: false });
       if (i === 5) B.setWeatherKind(s, 'rain');
       s.weather.cloud = 0.15;
       if (i >= 4) s.shop.lights = false;
       setTraffic(traffic);
       put(xs);
-      sh.put(i++, frame(), 0, 0, `classic ${label}`);
+      sh.put(i++, frame(), 0, 0, `cyber ${label}`);
     }
     B.setWeatherKind(s, null);
     W0.length = 0;
@@ -343,7 +343,7 @@ async function shoot(tag, emit, report) {
     let i = 0;
     // 1: the window cleaner halfway along, clean and wet behind him, grubby ahead
     reset();
-    await scene('classic', 9.6, { people: false });
+    await scene('cyber', 9.6, { people: false });
     {
       const n = B.spawn(s, 'window-cleaner', { fromLeft: true });
       if (n) {
@@ -355,27 +355,27 @@ async function shoot(tag, emit, report) {
       for (let k = 18; k < 26; k++) C.wet[k] = 1 - (25 - k) / 8;
     }
     setTraffic([]);
-    sh.put(i++, frame(), 0, 0, 'classic 9:36 window cleaner: clean & wet behind, grubby ahead');
+    sh.put(i++, frame(), 0, 0, 'cyber 9:36 window cleaner: clean & wet behind, grubby ahead');
     // 2: the drone brushing the left pane at noon (shadow on the brick)
     reset();
-    await scene('classic', B.sunPos(12).noon + 2, {});
+    await scene('cyber', B.sunPos(12).noon + 2, {});
     C.drone = { x: 62, y: 30, state: 'brush', pane: 0, t: 1.5, hum: 1, passes: 0 };
     for (let k = 0; k < 5; k++) C.dirtUp[0][k] = 0;
     setTraffic([]);
-    sh.put(i++, frame(), 0, 0, 'classic afternoon: cleaning drone on the flat window');
+    sh.put(i++, frame(), 0, 0, 'cyber afternoon: cleaning drone on the flat window');
     // 3: the cherry-picker crew at work
     reset();
-    await scene('classic', 11.5, {});
+    await scene('cyber', 11.5, {});
     C.picker = { state: 'work', x: 296, boom: 1, t: 5, cones: 2, spark: 0.1 };
     C.lampOff = true;
     setTraffic([]);
-    sh.put(i++, frame(), 0, 0, 'classic 11:30 lamp crew in the cherry-picker');
+    sh.put(i++, frame(), 0, 0, 'cyber 11:30 lamp crew in the cherry-picker');
     // 4: the same at dusk, the amber beacon on the front
-    await scene('classic', B.sunTime(-3, true), {});
+    await scene('cyber', B.sunTime(-3, true), {});
     C.picker = { state: 'work', x: 296, boom: 1, t: 5, cones: 2, spark: 0 };
     C.lampOff = true;
     setTraffic([]);
-    sh.put(i++, frame(), 0, 0, 'classic dusk: beacon turning, lamp dark while they work');
+    sh.put(i++, frame(), 0, 0, 'cyber dusk: beacon turning, lamp dark while they work');
     // 5: neon noon: flying traffic in the flat's windows, the air-con running
     reset();
     await scene('cyber', B.sunPos(12).noon, {});
@@ -391,27 +391,27 @@ async function shoot(tag, emit, report) {
     setTraffic([]);
     sh.put(i++, frame(), 0, 0, 'cyber night: telly on, sky reflection kept down');
     s.upstairs.tv = false;
-    // 7: classic dusk: an airliner's contrail lit gold-red above the earth's shadow, gulls, in the flat's windows
+    // 7: Cyber dusk: an airliner's contrail lit gold-red above the earth's shadow, gulls, in the flat's windows
     reset();
-    await scene('classic', B.sunTime(-1.5, true), {});
+    await scene('cyber', B.sunTime(-1.5, true), {});
     FL.push({ kind: 'plane', gx: 70, gy: 24, m: 0.00044, dir: 1, v: 0, t: 0, seed: 0.3 });
     FL.push({ kind: 'gull', gx: 172, gy: 30, m: 0.17, dir: -1, v: 0, t: 0, seed: 0.1 });
     FL.push({ kind: 'gull', gx: 182, gy: 27, m: 0.15, dir: -1, v: 0, t: 0, seed: 0.6 });
     setTraffic([]);
-    sh.put(i++, frame(), 0, 0, 'classic sunset -1.5: contrail and gulls in the flat windows');
+    sh.put(i++, frame(), 0, 0, 'cyber sunset -1.5: contrail and gulls in the flat windows');
     // 8, 9: the shop's lamps after dark: all on with Mabel at the back; then only the desk lamp
     if (B.shopLamps) {
-      await scene('classic', 19.6, { mabelInside: true, people: false });
+      await scene('cyber', 19.6, { mabelInside: true, people: false });
       B.shopLamps.pendantL = B.shopLamps.pendantR = true;
       s.shop.lights = true;
       B.shopLamps.lastMain = true;
       s.lamp = true;
       setTraffic([]);
-      sh.put(i++, frame(), 0, 0, 'classic 19:36 shop lamps on: pools, scallops, Mabel\'s shadow');
+      sh.put(i++, frame(), 0, 0, 'cyber 19:36 shop lamps on: pools, scallops, Mabel\'s shadow');
       B.shopLamps.pendantL = B.shopLamps.pendantR = false;
       s.shop.lights = false;
       B.shopLamps.lastMain = false;
-      sh.put(i++, frame(), 0, 0, 'classic 19:36 only the desk lamp: the counter pool');
+      sh.put(i++, frame(), 0, 0, 'cyber 19:36 only the desk lamp: the counter pool');
       s.lamp = false;
     }
     reset();
@@ -437,14 +437,14 @@ async function shoot(tag, emit, report) {
       cg.fillRect(160, 0, 1, 180);
       sh.put(i, c, 0, 0, `${label}: left ON | right OFF`);
     };
-    await scene('classic', B.sunTime(22, true), {});
+    await scene('cyber', B.sunTime(22, true), {});
     split('sun', 'afternoon: sunlight', 0);
-    await scene('classic', B.sunTime(5, true), {});
+    await scene('cyber', B.sunTime(5, true), {});
     split('buildingShadow', 'golden hour: opposite buildings', 1);
-    await scene('classic', B.sunTime(12, true), { mabelInside: false });
+    await scene('cyber', B.sunTime(12, true), { mabelInside: false });
     setTraffic([]);
     split('sunInterior', 'late afternoon: sun through the glass', 2);
-    await scene('classic', B.sunPos(12).noon, { mabelInside: false });
+    await scene('cyber', B.sunPos(12).noon, { mabelInside: false });
     setTraffic([]);
     split('glassReflection', 'noon: the glass reflects the street', 3);
     await emit('I-approaches', sh.c);
@@ -459,7 +459,7 @@ async function shoot(tag, emit, report) {
 
 // ---------- Mabel's dances: filmstrips for the dance and animation reviewers ----------
 //   await reel.dance('d1')   -> out/d1-M-dance-<theme>.png
-export async function dance(tag = 'dance', themes = ['classic']) {
+export async function dance(tag = 'dance', themes = ['cyber']) {
   const now0 = performance.now.bind(performance);
   const live = B.world;
   B.holdFrame = true;
