@@ -22,7 +22,7 @@
   B.note({
     date: '2026-10-06',
     title: 'Neon',
-    text: 'The high street has jumped a few decades: concrete and steel, a neon shop sign, holo labels, LED clocks and boomboxes, a megacity glowing at the end of the alley, and passers-by in techwear with implants and light-up umbrellas. Mabel is still Mabel, with AR reading glasses. The Neon button in the top bar switches back to the classic street.',
+    text: 'The high street has jumped a few decades: concrete and steel, a neon shop sign, holo labels, LED clocks and boomboxes, a megacity glowing at the end of the alley, and passers-by in techwear with implants and light-up umbrellas. Mabel is still Mabel, with AR reading glasses.',
   });
 
   B.note({

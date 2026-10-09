@@ -149,17 +149,19 @@
     $('#volBtn').addEventListener('click', () => volpanel.classList.toggle('hidden'));
     volpanel.querySelector('.close').addEventListener('click', () => volpanel.classList.add('hidden'));
 
-    // ----- look: neon future or classic high street -----
-    const styleBtn = $('#styleBtn');
-    const syncStyle = () => {
-      styleBtn.textContent = B.theme === 'cyber' ? 'Neon' : 'Classic';
-      styleBtn.classList.toggle('on', B.theme === 'cyber');
+    // ----- playable lighting experiment -----
+    const lightingBtn = $('#lightingBtn');
+    const syncLighting = () => {
+      const on = !!(B.hybridLighting && B.hybridLighting.enabled);
+      lightingBtn.textContent = on ? 'Hybrid light' : 'Current light';
+      lightingBtn.classList.toggle('on', on);
     };
-    styleBtn.addEventListener('click', () => {
-      B.setTheme(B.theme === 'cyber' ? 'classic' : 'cyber');
-      syncStyle();
+    lightingBtn.addEventListener('click', () => {
+      if (B.hybridLighting) B.hybridLighting.setEnabled(!B.hybridLighting.enabled);
+      syncLighting();
     });
-    syncStyle();
+    B.on('lighting-mode', syncLighting);
+    syncLighting();
 
     $('#diaryBtn').addEventListener('click', () => {
       $('#diary').classList.toggle('hidden');

@@ -1129,7 +1129,10 @@
       headlights = Math.max(headlights, a);
       list.push({ x: lx, y: L.lamps[0].y, D: L.D, col: L.col, edge: L.edge, a, aim: L.aim != null ? L.aim : lx + 80 * ev.dir, pair: ev.kind === 'turn' ? 'across' : L.depthPair ? 'depth' : null, dir: ev.dir, lift: L.lift || 0, kick: L.kick || 0, cutY: L.main ? null : L.cutY || 150, main: L.main });
     }
-    exposureTarget = 1 - 0.4 * Math.min(1, headlights);
+    // Hybrid already adds a geometric key over the cinematic projection, so its exposure response should frame the
+    // event without making the rest of the composition collapse into black.
+    const exposureDepth = B.hybridLighting && B.hybridLighting.enabled ? 0.25 : 0.4;
+    exposureTarget = 1 - exposureDepth * Math.min(1, headlights);
     list.sort((a, b) => b.a - a.a);
     return list.slice(0, 3);
   }
@@ -1216,6 +1219,14 @@
     mk,
     snaps,
     setMain: (c) => (mainCanvas = c),
+    // The relighting prototypes use the same authored lamps and vehicle events, but solve visibility with a
+    // receiver/depth buffer instead of this file's projected-mask compositor. Return fresh objects so a prototype
+    // can tune them without changing the live renderer's sources.
+    sources: (s) => {
+      const day = B.daylight(s.hour);
+      const dark = Math.min(1, (1 - day) * 1.1 + (s.weather.cloud || 0) * 0.15);
+      return lightsBehind(s, dark).map((src) => Object.assign({}, src));
+    },
   });
 
   // ---------- each frame ----------
@@ -1376,7 +1387,8 @@
           }
         }
         // through the windows
-        const indoorDark = s.shop.lights ? 0.35 : 1;
+        const direction = B.lightingDirection && B.lightingDirection.enabled ? B.lightingDirection.values(s) : null;
+        const indoorDark = s.shop.lights ? (direction ? direction.externalTransmission : 0.35) : 1;
         qg.clearRect(0, 0, W, H);
         ag.clearRect(0, 0, W, H);
         const behind = F.projection ? lightsBehind(s, dark) : [];

@@ -135,6 +135,17 @@
     return 1 - 0.55 * k;
   }
 
+  /** Clear morning sun is behind this west-facing shop, but it strikes the terrace opposite and returns as a broad,
+   * warm source. Unlike generic sky fill, this bounce has a direction and can therefore print the shop window's
+   * boundary into the room. It is a Hybrid-only art-direction layer and disappears under cloud, rain and fog. */
+  function hybridFacadeBounce(s, sun, P) {
+    if (!(B.hybridLighting && B.hybridLighting.enabled) || !P.morning || !sun.behind || P.e <= 1) return 0;
+    const w = s.weather || {};
+    const clear = 1 - clamp(Math.max(w.rain || 0, (w.fog || 0) * 1.2, Math.max(0, (w.cloud || 0) - 0.2) * 1.1), 0, 1);
+    const elevation = clamp((P.e - 1) / 10, 0, 1);
+    return elevation * clear * clamp(sun.strength / 0.6, 0, 1) * cloudAt(s, 150);
+  }
+
   /** A vehicle's shadow on the wall (when the sun is low enough to reach it): body, cabin with see-through windows,
    *  wheels with daylight between them. Bus windows let the sun through as a row of bright panes. */
   function vehicleShadow(g, ev, sun) {
@@ -443,9 +454,16 @@
         tg.globalCompositeOperation = 'source-over';
         const gold = sun.e < 10 ? 1 - sun.e / 10 : 0;
         const lowBoost = sun.e < 8 ? 1.3 : 1;
+        const hybridBoost = B.hybridLighting && B.hybridLighting.enabled ? 1.65 : 1;
         g.globalCompositeOperation = 'soft-light';
-        g.globalAlpha = Math.min(0.95, (0.45 + 0.45 * gold) * S * Math.max(0.35, sun.facing) * lowBoost);
+        g.globalAlpha = Math.min(0.95, (0.45 + 0.45 * gold) * S * Math.max(0.35, sun.facing) * lowBoost * hybridBoost);
         g.drawImage(tc, 0, 0);
+        if (hybridBoost > 1) {
+          // Soft-light supplies colour; a small screen component supplies the unmistakable value step of direct sun.
+          g.globalCompositeOperation = 'screen';
+          g.globalAlpha = 0.13 * S * Math.max(0.3, sun.facing);
+          g.drawImage(tc, 0, 0);
+        }
         if (gold > 0) {
           g.globalCompositeOperation = 'lighter';
           g.globalAlpha = 0.12 * gold * S;
@@ -482,6 +500,36 @@
         g.fillStyle = '#e8b080';
         g.fillRect(0, 124, 280, 56);
       }
+      const facadeBounce = hybridFacadeBounce(s, sun, P);
+      if (facadeBounce > 0.02) {
+        // The sunlit terrace opposite acts like a huge warm reflector. Keep glass and luminous signage out of this
+        // facade layer; the same source is projected through the window separately below.
+        tg.globalCompositeOperation = 'source-over';
+        tg.clearRect(0, 0, W, H);
+        const bg = tg.createLinearGradient(0, 8, 0, 164);
+        bg.addColorStop(0, '#a98284');
+        bg.addColorStop(0.58, '#d19a78');
+        bg.addColorStop(1, '#efbd88');
+        tg.fillStyle = bg;
+        tg.fillRect(0, 8, 280, 156);
+        tg.globalCompositeOperation = 'destination-out';
+        const L = B.LAYOUT;
+        tg.fillRect(L.win.x, L.win.y, L.win.w, L.win.h);
+        tg.fillRect(L.doorGlass.x, L.doorGlass.y, L.doorGlass.w, L.doorGlass.h);
+        for (const u of L.upstairs) tg.fillRect(u.x, u.y, u.w, u.h);
+        for (const [x0, y0, w0, h0] of [[0, 52, 274, 21], [227, 77, 34, 12], [271, 58, 13, 26]]) tg.fillRect(x0, y0, w0, h0);
+        tg.globalCompositeOperation = 'source-over';
+        g.globalCompositeOperation = 'soft-light';
+        g.globalAlpha = 0.62 * facadeBounce;
+        g.drawImage(tc, 0, 0);
+        g.globalCompositeOperation = 'screen';
+        g.globalAlpha = 0.2 * facadeBounce;
+        g.drawImage(tc, 0, 0);
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = 1;
+        g.fillStyle = rgba('#ffd09c', 0.1 * facadeBounce);
+        for (const [x0, x1, y] of overhangs()) g.fillRect(x0, y, x1 - x0, 1);
+      }
       g.globalAlpha = 1;
       g.globalCompositeOperation = 'source-over';
       g.restore();
@@ -490,6 +538,8 @@
 
   // ---------- glass by day, the sun inside, people, and flashes of sun from windscreens ----------
   let lay = null;
+  let bounceLay = null;
+  let bounceKey = '';
   /** The street behind you, as seen mirrored in glass: sky above the opposite roofline (chimneys and all), the
    *  opposite facades below with their windows; sunlit in the morning, in shade in the evening. */
   /** The terrace across the road as the glass sees it, by mirrored street x and height (m): shopfronts with a fascia
@@ -574,6 +624,7 @@
       if (s.owner.area === 'street') people.push(s.owner);
       const Wn = B.LAYOUT.win;
       const dayAmt = clamp((P.e + 1) / 8, 0, 1);
+      const facadeBounce = hybridFacadeBounce(s, sun, P);
       // reflections hold through twilight (the bright sky outshines a dark shop); after dark an unlit shop's glass
       // still mirrors the lit shops and headlamps across the road
       const nightRefl = B.oppositeStreet && F.streetLife ? clamp((-P.e - 4) / 6, 0, 1) * (s.shop.lights ? 0.18 : 0.75) : 0;
@@ -677,7 +728,9 @@
           const dayK = streetK ? (!P.morning && P.e < 8 ? 0.35 : 0.45) : 0.3;
           const base = Math.max(dayK * reflAmt * (s.shop.lights && dayAmt < 0.5 ? 0.5 : 1), 0.6 * nightRefl); // (the flat's lamp only dims its own panes; kept below the room so the lit shops don't take over the glass)
           // where the glass mirrors sky (~8% of 500-5000 cd/m2) it outshines the room behind: dim the room, screen the sky
-          const skyMul = Math.max(0.75 * dayAmt, duskK); // the sky's image (~400 cd/m2) all but hides the room behind
+          let skyMul = Math.max(0.75 * dayAmt, duskK); // the sky's image (~400 cd/m2) all but hides the room behind
+          if (facadeBounce > 0.02) skyMul *= 0.7;
+          else if (B.hybridLighting && B.hybridLighting.enabled && !sun.behind && S > 0.05) skyMul *= 0.82;
           // in a lit flat the reflected sky takes only its physical share: R*Lsky / (R*Lsky + Lroom)
           const Lroom = s.upstairs && s.upstairs.light ? 20 : s.upstairs && s.upstairs.tv ? 2 : 0;
           const share = Lroom ? (0.08 * skyLum(P.e)) / (0.08 * skyLum(P.e) + Lroom) : 1;
@@ -741,6 +794,57 @@
           g.globalCompositeOperation = 'source-over';
         }
       };
+      if (F.sunInterior && kit && kit.project && facadeBounce > 0.02) {
+        // The upper edge of the reflected source is deliberately coherent rather than fully diffuse: the bright
+        // opposite facade and our own fascia form a readable, gently sloping cutoff across the shelves.
+        const strips = [];
+        const u = clamp((s.hour - (P.noon - 6.5)) / 6.5, 0, 1);
+        const slope = (0.5 - u) * 0.16;
+        for (let x = Wn.x; x < Wn.x + Wn.w; x += 4) {
+          const w = Math.min(4, Wn.x + Wn.w - x);
+          const y = clamp(Math.round(Wn.y + 8 + (x + w / 2 - (Wn.x + Wn.w / 2)) * slope), Wn.y + 2, Wn.y + 18);
+          strips.push({ x, y, w, h: Wn.y + Wn.h - y });
+        }
+        if (!bounceLay) bounceLay = [kit.mk(), kit.mk()];
+        const [[qc, qg], [ac, ag]] = bounceLay;
+        if (qg && ag) {
+          // Daylight changes slowly, while a full receiver projection is expensive. Refresh after five in-game
+          // minutes or a weather jump; that is less than a two-pixel step at this scene's scale.
+          const w = s.weather || {};
+          const key = [
+            Math.round(s.hour * 12),
+            Math.round(facadeBounce * 40),
+            Math.round((w.cloud || 0) * 10),
+            Math.round((w.rain || 0) * 10),
+            Math.round((w.fog || 0) * 10),
+          ].join('|');
+          const refresh = key !== bounceKey;
+          if (refresh) {
+            bounceKey = key;
+            qg.clearRect(0, 0, W, H);
+            ag.clearRect(0, 0, W, H);
+            kit.setMain(g.canvas || null);
+            const D = 420;
+            const src = {
+              x: 42 + 138 * u,
+              y: -110 - P.e * 4,
+              D,
+              col: '#ffd0a0',
+              colGain: '#ffddb8',
+              a: 0.3 * facadeBounce,
+              gain: 1.8 * facadeBounce,
+              soft: true,
+              compact: true,
+            };
+            const room = Object.assign({}, kit.SHOP, { aperture: () => strips });
+            kit.project(qg, s, src, room, ag);
+          }
+          g.drawImage(qc, 0, 0);
+          g.globalCompositeOperation = 'lighter';
+          g.drawImage(ac, 0, 0);
+          g.globalCompositeOperation = 'source-over';
+        }
+      }
       if (S < 0.02 || sun.behind || sun.facing <= 0.05) return reflect();
       // people: cooler in the shade of the buildings opposite, warmer in the sun, with a shaded side away from it
       for (const a of people) {
@@ -851,6 +955,11 @@
         gain: Math.min(1.5, 2.3 * Math.min(0.85, 0.7 * S * sun.facing * cloudAt(s, 110))), // albedo x E: snap x (1 + gain); lifted ~30% so the blade holds against the glass
         motes: true,
       };
+      if (B.hybridLighting && B.hybridLighting.enabled) {
+        // The receiver overlay supplies depth breaks, while this authored blade carries the visible value boundary.
+        src.a = Math.min(0.9, src.a * 1.05);
+        src.gain = Math.min(1.8, src.gain * 1.4);
+      }
       const room = Object.assign({}, kit.SHOP, { aperture: () => strips });
       kit.project(qg, s, src, room, ag);
       const flat = Object.assign({}, kit.FLAT, {

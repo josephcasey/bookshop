@@ -109,6 +109,7 @@
           const s2 = Object.create(s);
           s2.lamp = false;
           il.call(this, g, s2, day, false);
+          if (B.lightingDirection && B.lightingDirection.enabled) B.lightingDirection.beforeLamps(g, s, day);
           // ...then each lamp that's on lights it, shadows and all
           lamps(g, s, day);
         };
@@ -116,6 +117,8 @@
     }
   }
   B.on('tick', wrap);
+  B.on('ready', wrap);
+  state.ensureWrapped = wrap;
 
   // ---------- the light ----------
   let lc = null;
@@ -205,14 +208,16 @@
     if (!lg || !tg) return;
     const masks = kit.SHOP && kit.SHOP.masks ? kit.SHOP.masks(s) : [];
     const people = kit.SHOP && kit.SHOP.people ? kit.SHOP.people(s).filter(([, z]) => z > 0) : [];
-    const col = cyber() ? '#d8ecff' : '#ffd9a0';
-    const deskCol = cyber() ? '#e0f4ff' : '#ffe2b0';
+    const art = B.lightingDirection && B.lightingDirection.enabled ? B.lightingDirection.values(s) : null;
+    const col = art ? art.pendantCol : cyber() ? '#d8ecff' : '#ffd9a0';
+    const deskCol = art ? art.deskCol : cyber() ? '#e0f4ff' : '#ffe2b0';
     // the lamps add up on one light map; a lit room also fills with light bounced off its walls and ceiling
     lg.clearRect(0, 0, W, H);
     lg.globalCompositeOperation = 'source-over';
     const pendants = list.filter((l) => l.shade === 'pendant').length;
     if (pendants) {
-      lg.fillStyle = rgba(col, 0.28 + 0.12 * (pendants - 1));
+      const bounce = art ? art.bounce + art.bounceEach * (pendants - 1) : 0.28 + 0.12 * (pendants - 1);
+      lg.fillStyle = rgba(col, bounce);
       lg.fillRect(Wn.x, Wn.y, Wn.w, Wn.h);
     }
     lg.globalCompositeOperation = 'lighter';
@@ -221,14 +226,15 @@
       // each lamp on its own scratch layer first (its shadows only cut its own light)
       const [c1, g1] = scratch();
       g1.clearRect(0, 0, W, H);
-      oneLamp(g1, s, l, l.shade === 'desk' ? deskCol : col, l.shade === 'desk' ? 0.75 : 0.9, masks, people);
+      const intensity = l.shade === 'desk' ? (art ? art.deskIntensity : 0.75) : art ? art.pendantIntensity : 0.9;
+      oneLamp(g1, s, l, l.shade === 'desk' ? deskCol : col, intensity, masks, people);
       lg.drawImage(c1, 0, 0);
     }
     lg.globalCompositeOperation = 'source-over';
     // the interior's cel bands, then the light reveals the room's own colours
     const RB = { x: Wn.x, y: Wn.y, w: Wn.w, h: Wn.h };
     if (F.bands !== false && kit.quantise) kit.quantise(lg, 3, 0.95, true, RB);
-    kit.reveal(g, lc, 'in', 0, 0.95, g, false, null, RB);
+    kit.reveal(g, lc, 'in', art ? art.glare : 0, art ? art.revealStrength : 0.95, g, false, null, RB);
     // the bulbs themselves, and the warm air around them
     g.save();
     g.globalCompositeOperation = 'lighter';
