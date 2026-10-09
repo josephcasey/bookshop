@@ -539,7 +539,7 @@
   /** y of the top of an actor's head (for bubbles & particles). */
   B.headTop = (a) => {
     const m = metrics(a);
-    return a.y - m.H + m.drop;
+    return a.y - (a.lift || 0) - m.H + m.drop;
   };
 
   function limb(g, x0, y0, x1, y1, c, w = 2) {
@@ -572,7 +572,7 @@
   };
   B.drawPerson = function (g, a) {
     const jitter = a.jitter && Math.random() < 0.25 ? (Math.random() < 0.5 ? -1 : 1) : 0;
-    B.blit(g, a.x + jitter, a.y, (bg, cx, fy) => paintPerson(bg, a, cx, fy), a.alpha == null ? 1 : a.alpha);
+    B.blit(g, a.x + jitter, a.y - (a.lift || 0), (bg, cx, fy) => paintPerson(bg, a, cx, fy), a.alpha == null ? 1 : a.alpha); // (lift: raised on the window cleaner's stilts)
   };
 
   // themes can restyle everyone's clothes (B.styleLook) and add details on top (B.personAccents)

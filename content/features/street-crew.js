@@ -1,8 +1,8 @@
 /* 2026-10-07 (the people who keep the street going)
  * - The glass gets grubby: dust and road spray build up on the shop window and door through the day (faster after
  *   rain), and on the flat's windows more slowly.
- * - Every morning a window cleaner comes by with a bucket and a squeegee on a pole and does the ground floor, one
- *   stroke at a time, leaving a wet sheen that dries.
+ * - Every morning a window cleaner comes by and does the ground floor, leaving a wet sheen that dries (since SCH-34
+ *   by hand, with spray bottle, squeegee and stilt boots: content/features/window-cleaning.js).
  * - Most days a little cleaning drone does the flat's windows: it hums in, mists a pane, sweeps it with its rotary
  *   brush and moves on (it casts a small shadow in the sun).
  * - Now and then the street lamp develops a fault and flickers after dark; the next day a maintenance crew turns
