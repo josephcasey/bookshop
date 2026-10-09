@@ -186,9 +186,7 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeBoard();
       });
-      document.addEventListener('pointerdown', (e) => {
-        if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target.id !== 'screen' && e.target.tagName !== 'CANVAS') closeBoard();
-      });
+      // (a click outside closes it: js/main.js does that for every panel)
     }
     const cy = B.theme === 'cyber';
     const msgEl = panel.querySelector('.boardMsg');

@@ -423,6 +423,38 @@
       B.audio.setTvOpen(false);
     };
     B.openTv = openTv;
+
+    // ----- a click or tap outside an open panel closes it (SCH-32) -----
+    // Every pop-up is an <aside> with its own close button (the TV, the tuner, the diary, the time and volume panels,
+    // the lab, the what's-new card, the message board), so closing goes through that button and each panel tidies up
+    // after itself. Controls outside the panels (the HUD buttons) are left to toggle their own panels, and a tap on the
+    // scene that closes a panel is used up, so it doesn't also knock on the window or open something else.
+    const openPanels = () =>
+      [...document.querySelectorAll('aside')].filter((el) => !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none' && el.querySelector('.close'));
+    let swallowClick = false;
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        const open = openPanels();
+        const bt = document.getElementById('buildTip');
+        if (bt && bt.style.display !== 'none' && !(e.target === canvas)) bt.style.display = 'none';
+        if (!open.length) return;
+        const t = e.target;
+        if (open.some((p) => p.contains(t)) || (t.closest && t.closest('.tvYouTubeBox, button, input, select, label, a'))) return;
+        for (const p of open) p.querySelector('.close').click();
+        if (t === canvas) swallowClick = true;
+      },
+      true,
+    );
+    canvas.addEventListener(
+      'click',
+      (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        e.stopImmediatePropagation();
+      },
+      true,
+    );
     tvpanel.querySelector('.close').addEventListener('click', closeTv);
     document.addEventListener('keydown', (e) => e.key === 'Escape' && closeTv());
     B.on('activity', () => !tvpanel.classList.contains('hidden') && renderShows());
