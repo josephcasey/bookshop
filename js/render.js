@@ -853,6 +853,7 @@
   }
 
   function drawDisplay(g, s) {
+    if (s.windowSet && s.windowSet.benches === false) return; // carried through to the back for an evening event (events.js)
     const cols = s.display.cols;
     // the window display stands on two low benches at the old sill height (the glass now runs to the floor, and
     // the middle is kept clear: she dances there): a board, its lit edge, a front lip, two legs each

@@ -42,6 +42,7 @@ window.Bookshop.manifest = [
   'features/message-board.js',
   'features/window-cleaning.js',
   'features/drone-visit.js',
+  'features/events.js',
   'features/time-visitors.js',
   'features/radio-tuner.js',
   'features/live-radio.js',

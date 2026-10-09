@@ -58,6 +58,12 @@
     ['Emergency', 1.0, 'clear', 0.1, 'emergency'],
     ['Drone abduction', 13.5, 'cloudy', 0.5, null, 'drone-visit'], // SCH-37
     ['Gadget visitors', 11.2, 'clear', 0.2, null, 'gadget-visit'], // SCH-22: the bow-tied man and his red-haired friend
+    // SCH-39: the evenings in the window space, and the café table
+    ['Lindy Hop night', 18.2, 'clear', 0.2, null, 'event-lindy'],
+    ['Salsa night', 18.2, 'clear', 0.2, null, 'event-salsa'],
+    ['Line dancing', 18.2, 'clear', 0.2, null, 'event-line'],
+    ['Board games night', 18.2, 'cloudy', 0.6, null, 'event-games'],
+    ['Café table', 11.4, 'clear', 0.3, null, 'cafe-visit'],
   ];
 
   const lab = (B.lab = { compare: null, divider: 160, swap: false, scenario: null, loopT: 0 });
@@ -196,7 +202,10 @@
   function setOff(s, id) {
     const h = B.findDef('happening', id);
     if (!h) return;
-    for (let i = s.npcs.length - 1; i >= 0; i--) if (s.npcs[i].area === 'inside' || /^(drone-visitor|gadget-)/.test(s.npcs[i].kind)) s.npcs.splice(i, 1);
+    for (let i = s.npcs.length - 1; i >= 0; i--) if (s.npcs[i].area === 'inside' || /^(drone-visitor|gadget-|event-guest|cafe-guest)/.test(s.npcs[i].kind)) s.npcs.splice(i, 1);
+    s.event = null;
+    if (s.cafe) s.cafe = { seats: [null, null], items: [] };
+    if (s.windowSet) Object.assign(s.windowSet, { benches: true, tables: false, cafe: true });
     const o = s.owner;
     Object.assign(o, { area: 'inside', depth: 'back', hidden: false, alpha: 1, onStage: false, implants: 0 });
     s.dayStats.droneVisits = 0;
