@@ -46,7 +46,7 @@
     // a pigeon on the ledge above the glass, now and then...
     for (const p of s.pigeons || []) {
       if ((p.state !== 'perch' && p.state !== 'roost') || p.y !== 52 || p.x < W.x + 4 || p.x > W.x + W.w - 4) continue;
-      if (s.droppings.length + falling.length < 12 && Math.random() < dt / 420) falling.push({ x: Math.round(p.x - 2 * (p.dir || 1)), y: 56, vy: 0, ty: B.rnd(W.y + 24, W.y + W.h - 8) });
+      if (s.droppings.length + falling.length < 12 && Math.random() < dt / 240) falling.push({ x: Math.round(p.x - 2 * (p.dir || 1)), y: 56, vy: 0, ty: B.rnd(W.y + 24, W.y + W.h - 8) });
     }
     // ...and it lands on the glass and stays there
     for (let i = falling.length - 1; i >= 0; i--) {
