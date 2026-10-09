@@ -40,7 +40,8 @@
     ['palette', 'Locked palette', 'The finished frame snapped to one fixed palette'],
   ];
 
-  // moments defined by the sun (so they follow the seasons), or by the clock: [name, hour or (()=>hour), weather, cloud, traffic]
+  // moments defined by the sun (so they follow the seasons), or by the clock:
+  // [name, hour or (()=>hour), weather, cloud, traffic, and optionally a happening to set off straight away]
   const SCENARIOS = [
     ['Sunrise', () => B.sunTime(4, false), 'clear', 0.1, null],
     ['Morning', () => B.sunTime(14, false), 'clear', 0.15, null],
@@ -55,6 +56,8 @@
     ['Night rain', 22.4, 'rain', 0.8, 'car'],
     ['Fog', 23.0, 'fog', 0.6, 'turn'],
     ['Emergency', 1.0, 'clear', 0.1, 'emergency'],
+    ['Drone abduction', 13.5, 'cloudy', 0.5, null, 'drone-visit'], // SCH-37
+    ['Gadget visitors', 11.2, 'clear', 0.2, null, 'gadget-visit'], // SCH-22: the bow-tied man and his red-haired friend
   ];
 
   const lab = (B.lab = { compare: null, divider: 160, swap: false, scenario: null, loopT: 0 });
@@ -185,7 +188,21 @@
     if (weather === 'rain') s.weather.rain = 1;
     if (weather === 'fog') s.weather.fog = 1;
     lab.loopT = 0.5;
+    if (sc[5]) setOff(s, sc[5]);
     if (B.syncButtons) B.syncButtons(s);
+  }
+  /** Set a happening off now, whatever its odds: clear the shop of customers, bring Mabel to the counter, and wipe
+   * the once-a-day marks so it can run again (the scenarios' hours are in shop hours). */
+  function setOff(s, id) {
+    const h = B.findDef('happening', id);
+    if (!h) return;
+    for (let i = s.npcs.length - 1; i >= 0; i--) if (s.npcs[i].area === 'inside' || /^(drone-visitor|gadget-)/.test(s.npcs[i].kind)) s.npcs.splice(i, 1);
+    const o = s.owner;
+    Object.assign(o, { area: 'inside', depth: 'back', hidden: false, alpha: 1, onStage: false, implants: 0 });
+    s.dayStats.droneVisits = 0;
+    s.dayStats.gadgetVisits = 0;
+    const run = h.run(s);
+    run.next(); // (both spawn their visitors straight away)
   }
   B.on('tick', (s, dt) => {
     const sc = lab.scenario;
