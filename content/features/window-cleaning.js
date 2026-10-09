@@ -109,25 +109,21 @@
       reaches.sort((p, q) => dirty(q) - dirty(p));
       yield n.walkTo(W.x + 14);
       B.log(dirty(reaches[0]) ? 'The window cleaner makes a beeline for the pigeon mess on the glass.' : B.pick(['The window cleaner is here: spray bottle, squeegee and those extending boots.', 'Squeak, squeak: the window cleaner is doing the front by hand.']));
-      // move the hand to (x, y), raising or lowering the stilts (or crouching) so it's within reach
+      // move the hand to (x, y), telescoping the stilts up or down as it goes (or crouching) to keep it in reach
       function* reachTo(x, y, sec) {
         const top = shoulderY() + n.lift - REACH; // the highest point reachable standing on the ground
         const wantLift = clamp(Math.ceil(top - y), 0, 18);
-        if (Math.abs(wantLift - n.lift) > 0) {
-          if (wantLift > n.lift + 2 || wantLift < n.lift - 2) B.audio.play('stilts', n.x, wantLift > n.lift);
-          const from = n.lift;
-          for (let k = 1; k <= 4; k++) {
-            n.lift = Math.round(from + ((wantLift - from) * k) / 4);
-            yield 0.05;
-          }
-        }
-        n.pose = y > shoulderY() + REACH + 2 ? 'crouch' : 'backstand';
+        const fromLift = n.lift;
+        if (Math.abs(wantLift - fromLift) > 2) B.audio.play('stilts', n.x, wantLift > fromLift);
         const fx = h.gx;
         const fy = h.gy;
         const steps = Math.max(1, Math.round(sec / 0.04));
         for (let k = 1; k <= steps; k++) {
-          h.gx = fx + ((x - fx) * k) / steps;
-          h.gy = fy + ((y - fy) * k) / steps;
+          const q = k / steps;
+          n.lift = Math.round(fromLift + (wantLift - fromLift) * q);
+          h.gx = fx + (x - fx) * q;
+          h.gy = fy + (y - fy) * q;
+          n.pose = h.gy > shoulderY() + REACH + 2 ? 'crouch' : 'backstand';
           if (h.tool === 'squeegee') {
             for (let i = binOf(h.gx - 3); i <= binOf(h.gx + 3); i++) {
               if (B.crew) {
@@ -174,11 +170,8 @@
         }
         // boots back down, and on to the next stretch
         h.tool = null;
-        yield* reachTo(n.x, shoulderY() + 6 + n.lift, 0.15);
-        while (n.lift > 0) {
-          n.lift = Math.max(0, n.lift - 4);
-          yield 0.05;
-        }
+        yield* reachTo(n.x, shoulderY() + n.lift + 6, 0.3);
+        n.lift = 0;
         n.pose = 'stand';
       }
       if (s.shop.open && s.owner.area === 'inside' && B.chance(0.6)) {
